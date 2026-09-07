@@ -171,13 +171,15 @@ for i in range(1, N_CUSTOMERS + 1):
         "preferred_contact_method":       random.choice(CONTACT_METHODS),
         "branch_code":                    f"BR{random.randint(1,50):03d}",
         "relationship_manager_id":        f"RM{random.randint(1,200):04d}" if segment in ("high_net_worth","private_banking","premier") else None,
+        "is_shariah_preferred":           random.random() < 0.40,
         "source_system":                  "CBS_CORE",
     }
     customers_v1.append(base)
 
+    # v2 adds occupation_code — showcases AutoLoader schema evolution (addNewColumns)
     v2_extra = {**base,
                 "occupation_code":        random.choice(OCCUPATION_CODES),
-                "is_shariah_preferred":   random.random() < 0.40}
+                "record_updated_timestamp": (rec_updated + timedelta(days=30)).isoformat()}
     customers_v2.append(v2_extra)
 
 df_v1 = pd.DataFrame(customers_v1)
