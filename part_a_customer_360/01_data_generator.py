@@ -24,7 +24,7 @@ import pandas as pd
 from faker import Faker
 from datetime import date, datetime, timedelta
 
-fake = Faker('ms_MY')
+fake = Faker()  # en_US default — Malaysian patterns handled by custom logic below
 Faker.seed(42)
 random.seed(42)
 np.random.seed(42)
