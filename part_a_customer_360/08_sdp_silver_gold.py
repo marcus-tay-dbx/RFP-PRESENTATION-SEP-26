@@ -28,7 +28,7 @@
 # MAGIC ```
 
 # COMMAND ----------
-import dlt
+from pyspark import pipelines as dp
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
@@ -46,7 +46,7 @@ FULL = "fevm_master_classic_marcus_catalog.abmb_rfp_presentation"
 # MAGIC %md #### _agg_accounts — deposit account holdings per customer
 
 # COMMAND ----------
-@dlt.table(name="_agg_accounts", comment="Account aggregates per customer")
+@dp.materialized_view(name="_agg_accounts", comment="Account aggregates per customer")
 def _agg_accounts():
     return (spark.table(f"{FULL}.silver_deposit_accounts")
         .filter("__END_AT IS NULL")  # SCD2 current rows only
@@ -64,7 +64,7 @@ def _agg_accounts():
 # MAGIC %md #### _agg_loans — loan facility summary per customer
 
 # COMMAND ----------
-@dlt.table(name="_agg_loans", comment="Loan aggregates per customer")
+@dp.materialized_view(name="_agg_loans", comment="Loan aggregates per customer")
 def _agg_loans():
     return (spark.table(f"{FULL}.silver_loan_accounts")
         .filter("__END_AT IS NULL")  # SCD2 current rows only
@@ -82,7 +82,7 @@ def _agg_loans():
 # MAGIC %md #### _agg_transactions — transaction behaviour per customer (core banking + card)
 
 # COMMAND ----------
-@dlt.table(name="_agg_transactions", comment="Transaction behaviour aggregates per customer")
+@dp.materialized_view(name="_agg_transactions", comment="Transaction behaviour aggregates per customer")
 def _agg_transactions():
     today = current_date()
     txn   = spark.table(f"{FULL}.silver_transactions")
@@ -109,7 +109,7 @@ def _agg_transactions():
 # MAGIC %md #### _agg_digital — digital banking and telco engagement per customer
 
 # COMMAND ----------
-@dlt.table(name="_agg_digital", comment="Digital + telco activity aggregates per customer")
+@dp.materialized_view(name="_agg_digital", comment="Digital + telco activity aggregates per customer")
 def _agg_digital():
     da    = spark.table(f"{FULL}.silver_digital_activity")
     today = current_date()
@@ -148,21 +148,21 @@ def _agg_digital():
 # MAGIC - `legal_name IS NOT NULL` — warn only (logged to DQ metrics, row kept)
 
 # COMMAND ----------
-@dlt.expect_or_drop("gold_valid_cif",       "cif_number IS NOT NULL")
-@dlt.expect_or_drop("gold_active_customer", "lifecycle_status = 'active'")
-@dlt.expect("gold_has_name",                "legal_name IS NOT NULL")
-@dlt.table(
+@dp.expect_or_drop("gold_valid_cif",       "cif_number IS NOT NULL")
+@dp.expect_or_drop("gold_active_customer", "lifecycle_status = 'active'")
+@dp.expect("gold_has_name",                "legal_name IS NOT NULL")
+@dp.materialized_view(
     name="gold_customer_360",
     comment="Unified Customer 360 — 1 row per active customer, 65+ features. Certified data product.",
     table_properties={"quality": "gold", "certified": "true"}
 )
 def gold_customer_360():
     c    = spark.table(f"{FULL}.silver_customers").filter("__END_AT IS NULL")
-    acct = dlt.read("_agg_accounts")
-    loan = dlt.read("_agg_loans")
-    txn  = dlt.read("_agg_transactions")
+    acct = spark.read.table("_agg_accounts")
+    loan = spark.read.table("_agg_loans")
+    txn  = spark.read.table("_agg_transactions")
     kb   = spark.table(f"{FULL}.silver_kyc_compliance")
-    da   = dlt.read("_agg_digital")
+    da   = spark.read.table("_agg_digital")
 
     return (c
         .join(acct, c.party_id == acct.party_id, "left").drop(acct.party_id)
