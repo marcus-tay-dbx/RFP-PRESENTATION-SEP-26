@@ -184,11 +184,11 @@ df_v1 = pd.DataFrame(customers_v1)
 df_v2 = pd.DataFrame(customers_v2)
 
 # ── Write customer files ──────────────────────────────────────────────────────
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v1/customer_master", exist_ok=True)
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v2/customer_master", exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/customer_master", exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/batch_v2/customer_master", exist_ok=True)
 
-df_v1.to_csv(f"/dbfs{VOLUME_DATA}/batch_v1/customer_master/customers_v1.csv", index=False)
-df_v2.to_csv(f"/dbfs{VOLUME_DATA}/batch_v2/customer_master/customers_v2.csv", index=False)
+df_v1.to_csv(f"{VOLUME_DATA}/batch_v1/customer_master/customers_v1.csv", index=False)
+df_v2.to_csv(f"{VOLUME_DATA}/batch_v2/customer_master/customers_v2.csv", index=False)
 print(f"✅ customers_v1.csv: {len(df_v1)} rows, {len(df_v1.columns)} columns")
 print(f"✅ customers_v2.csv: {len(df_v2)} rows, {len(df_v2.columns)} columns (adds occupation_code, is_shariah_preferred)")
 
@@ -245,8 +245,8 @@ for cif in customer_ids:
         })
 
 df_acc = pd.DataFrame(accounts)
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v1/accounts", exist_ok=True)
-df_acc.to_csv(f"/dbfs{VOLUME_DATA}/batch_v1/accounts/accounts.csv", index=False)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/accounts", exist_ok=True)
+df_acc.to_csv(f"{VOLUME_DATA}/batch_v1/accounts/accounts.csv", index=False)
 print(f"✅ accounts.csv: {len(df_acc)} rows")
 
 # COMMAND ----------
@@ -291,8 +291,8 @@ for cif in random.sample(customer_ids, 600):
     })
 
 df_loans = pd.DataFrame(loans)
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v1/loans", exist_ok=True)
-df_loans.to_csv(f"/dbfs{VOLUME_DATA}/batch_v1/loans/loans.csv", index=False)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/loans", exist_ok=True)
+df_loans.to_csv(f"{VOLUME_DATA}/batch_v1/loans/loans.csv", index=False)
 print(f"✅ loans.csv: {len(df_loans)} rows")
 
 # COMMAND ----------
@@ -343,8 +343,8 @@ for cif in customer_ids:
         })
 
 df_txn = pd.DataFrame(transactions)
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v1/transactions", exist_ok=True)
-df_txn.to_csv(f"/dbfs{VOLUME_DATA}/batch_v1/transactions/transactions.csv", index=False)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/transactions", exist_ok=True)
+df_txn.to_csv(f"{VOLUME_DATA}/batch_v1/transactions/transactions.csv", index=False)
 print(f"✅ transactions.csv: {len(df_txn)} rows")
 
 # COMMAND ----------
@@ -393,8 +393,8 @@ for cif in cif_with_cards:
         })
 
 df_cards = pd.DataFrame(cards_txn)
-os.makedirs(f"/dbfs{VOLUME_DATA}/batch_v1/cards", exist_ok=True)
-df_cards.to_csv(f"/dbfs{VOLUME_DATA}/batch_v1/cards/cards_txn.csv", index=False)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/cards", exist_ok=True)
+df_cards.to_csv(f"{VOLUME_DATA}/batch_v1/cards/cards_txn.csv", index=False)
 print(f"✅ cards_txn.csv: {len(df_cards)} rows")
 
 # COMMAND ----------
@@ -408,7 +408,7 @@ PAYMENT_C_W     = [0.72, 0.14, 0.09, 0.05]
 BANKRUPTCY_STAT = ["none","voluntary","involuntary"]
 BANKRUPTCY_W    = [0.97, 0.02, 0.01]
 
-os.makedirs(f"/dbfs{VOLUME_DATA}/nearrt/credit_bureau", exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/nearrt/credit_bureau", exist_ok=True)
 for cif in customer_ids:
     ctos = random.randint(300, 850)
     record = {
@@ -445,7 +445,7 @@ for cif in customer_ids:
         "sanction_flag":                random.random() < 0.005,
         "data_source":                  "CTOS_API_v2",
     }
-    with open(f"/dbfs{VOLUME_DATA}/nearrt/credit_bureau/{cif}.json", "w") as f:
+    with open(f"{VOLUME_DATA}/nearrt/credit_bureau/{cif}.json", "w") as f:
         json.dump(record, f)
 
 print(f"✅ Credit bureau: 1000 JSON files written")
@@ -459,7 +459,7 @@ DEVICE_CLASSES   = ["flagship","mid_range","budget","feature_phone"]
 DEVICE_WEIGHTS   = [0.25, 0.40, 0.28, 0.07]
 DATA_PLANS       = ["UNLIMITED_50","UNLIMITED_30","15GB","8GB","3GB","BASIC"]
 
-os.makedirs(f"/dbfs{VOLUME_DATA}/nearrt/telco_events", exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/nearrt/telco_events", exist_ok=True)
 for idx, cif in enumerate(customer_ids):
     for j in range(5):
         event_date = date(2026,8,1) + timedelta(days=random.randint(0,37))
@@ -487,7 +487,7 @@ for idx, cif in enumerate(customer_ids):
             "consent_flag":                 True,
             "data_source":                  "TELCO_PARTNER_API",
         }
-        fname = f"/dbfs{VOLUME_DATA}/nearrt/telco_events/{cif}_{j:02d}.json"
+        fname = f"{VOLUME_DATA}/nearrt/telco_events/{cif}_{j:02d}.json"
         with open(fname, "w") as f:
             json.dump(record, f)
 
