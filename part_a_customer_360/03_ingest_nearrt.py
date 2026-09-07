@@ -15,7 +15,8 @@
 # MAGIC - `multiLine = true` — supports multi-line JSON documents in each file
 # MAGIC - `cloudFiles.schemaEvolutionMode = addNewColumns` — partner schema additions land automatically
 # MAGIC - `rescuedDataColumn = _rescued_data` — unexpected fields captured, no row loss
-# MAGIC - `trigger(processingTime="30 seconds")` — micro-batch: stream stays alive for continuous demo
+# MAGIC - `trigger(availableNow=True)` — processes all pending files then exits (Serverless-compatible)
+# MAGIC   For a live continuous demo change to: `trigger(processingTime="30 seconds")` on a classic cluster
 
 # COMMAND ----------
 from pyspark.sql.functions import current_timestamp, col
@@ -36,9 +37,10 @@ def load_bronze_json(source_path, table_name, schema_loc):
             .format("delta")
             .option("checkpointLocation", f"{schema_loc}/checkpoint")
             .option("mergeSchema", "true")
-            .trigger(processingTime="30 seconds")
+            .trigger(availableNow=True)   # use processingTime="30 seconds" on classic cluster for live demo
             .toTable(f"{FULL_SCHEMA}.{table_name}")
     )
+    # Returns after all pending files are processed (Serverless-safe)
 
 # COMMAND ----------
 # MAGIC %md ### Start near-RT streams
@@ -49,7 +51,8 @@ credit_query = load_bronze_json(
     table_name="bronze_credit_bureau",
     schema_loc=f"{VOLUME_DATA}/_schemas/credit_bureau"
 )
-print("✅ bronze_credit_bureau stream started")
+credit_query.awaitTermination()
+print(f"✅ bronze_credit_bureau loaded — {spark.table(f'{FULL_SCHEMA}.bronze_credit_bureau').count()} rows")
 
 # COMMAND ----------
 telco_query = load_bronze_json(
@@ -57,7 +60,8 @@ telco_query = load_bronze_json(
     table_name="bronze_telco_events",
     schema_loc=f"{VOLUME_DATA}/_schemas/telco_events"
 )
-print("✅ bronze_telco_events stream started")
+telco_query.awaitTermination()
+print(f"✅ bronze_telco_events loaded — {spark.table(f'{FULL_SCHEMA}.bronze_telco_events').count()} rows")
 
 # COMMAND ----------
 # MAGIC %md ### Monitor active streams
