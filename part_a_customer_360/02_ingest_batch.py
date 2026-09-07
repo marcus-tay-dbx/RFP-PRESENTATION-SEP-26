@@ -74,6 +74,13 @@ load_bronze(
 )
 
 # COMMAND ----------
+load_bronze(
+    source_path=f"{VOLUME_DATA}/batch_v1/digital_events/",
+    table_name="bronze_digital_events",
+    schema_loc=f"{VOLUME_DATA}/_schemas/digital_events"
+)
+
+# COMMAND ----------
 # MAGIC %md ### Validate bronze tables
 
 # COMMAND ----------
@@ -83,6 +90,7 @@ for tbl, expected_min in [
     ("bronze_loans",                500),
     ("bronze_core_banking_txn",     45000),
     ("bronze_cards_txn",            9000),
+    ("bronze_digital_events",       8000),
 ]:
     cnt = spark.table(f"{FULL_SCHEMA}.{tbl}").count()
     assert cnt >= expected_min, f"{tbl}: {cnt} rows (expected >= {expected_min})"

@@ -494,6 +494,48 @@ for idx, cif in enumerate(customer_ids):
 print(f"✅ Telco events: 5000 JSON files written")
 
 # COMMAND ----------
+# MAGIC %md ### Generate Batch CSV — Digital Banking Events (~15,000 rows)
+
+# COMMAND ----------
+EVENT_TYPES     = ["login","view_product","apply","fund_transfer","bill_pay","investment","logout"]
+EVENT_WEIGHTS   = [0.25,   0.20,          0.05,   0.22,          0.12,      0.08,        0.08]
+PRODUCT_CATS    = ["home_loan","personal_loan","credit_card","fixed_deposit","investment_fund","insurance","hire_purchase"]
+CHANNELS        = ["mobile_app","mobile_app","mobile_app","web"]  # 75% mobile
+DEVICE_TYPES    = ["iPhone","Android","iPad","Desktop"]
+
+digital_events = []
+for idx, cif in enumerate(customer_ids):
+    party_id   = f"P{int(cif[3:]):08d}"
+    n_events   = random.randint(8, 25)
+    for j in range(n_events):
+        evt_type  = random.choices(EVENT_TYPES, weights=EVENT_WEIGHTS)[0]
+        evt_dt    = datetime(2026, 8, 1) + timedelta(
+                        days=random.randint(0, 37),
+                        hours=random.randint(6, 23),
+                        minutes=random.randint(0, 59))
+        digital_events.append({
+            "event_id":                  f"DE{idx:06d}_{j:03d}",
+            "party_id":                  party_id,
+            "cif_number":                cif,
+            "session_id":                f"SES{idx:06d}_{j//3:03d}",
+            "event_timestamp":           evt_dt.isoformat(),
+            "event_date":                evt_dt.date().isoformat(),
+            "event_type":                evt_type,
+            "product_category_viewed":   random.choice(PRODUCT_CATS) if evt_type == "view_product" else None,
+            "channel":                   random.choice(CHANNELS),
+            "device_type":               random.choice(DEVICE_TYPES),
+            "page_url":                  f"/app/{evt_type.replace('_','-')}",
+            "session_duration_sec":      random.randint(10, 900),
+            "is_authenticated":          True,
+            "source_system":             "DIGITAL_BANKING_APP",
+        })
+
+df_digital = pd.DataFrame(digital_events)
+os.makedirs(f"{VOLUME_DATA}/batch_v1/digital_events", exist_ok=True)
+df_digital.to_csv(f"{VOLUME_DATA}/batch_v1/digital_events/digital_events.csv", index=False)
+print(f"✅ digital_events.csv: {len(df_digital)} rows")
+
+# COMMAND ----------
 # MAGIC %md ### Validate all output files
 
 # COMMAND ----------
@@ -503,6 +545,7 @@ for path in [
     f"{VOLUME_DATA}/batch_v1/loans/loans.csv",
     f"{VOLUME_DATA}/batch_v1/transactions/transactions.csv",
     f"{VOLUME_DATA}/batch_v1/cards/cards_txn.csv",
+    f"{VOLUME_DATA}/batch_v1/digital_events/digital_events.csv",
 ]:
     rows = spark.read.csv(path, header=True).count()
     print(f"✅ {path.split('/')[-1]}: {rows} rows")
