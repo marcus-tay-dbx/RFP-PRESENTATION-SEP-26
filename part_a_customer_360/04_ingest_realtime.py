@@ -43,16 +43,8 @@ print(f"✅ Broadcast {len(party_ids)} party IDs for event generation")
 # MAGIC %md ### Define event generator UDF
 
 # COMMAND ----------
-EVENT_TYPES = [
-    "page_view", "product_view", "apply_start", "apply_submit",
-    "login", "logout", "transfer_init", "transfer_confirm",
-    "balance_check", "statement_download", "support_chat_open",
-]
-PRODUCT_CATEGORIES = [
-    "savings_account", "current_account", "fixed_deposit",
-    "personal_loan", "home_loan", "auto_loan",
-    "credit_card", "debit_card", "unit_trust", "insurance",
-]
+EVENT_TYPES = ["login", "view_product", "apply", "fund_transfer", "bill_pay", "investment", "logout"]
+PRODUCT_CATS = ["CREDIT_CARD", "PERSONAL_LOAN", "HOME_LOAN", "INVESTMENT", "INSURANCE", None, None, None]
 PAGE_NAMES = [
     "home", "dashboard", "accounts", "loans", "cards",
     "investments", "promotions", "calculator", "apply_now", "profile",
@@ -74,7 +66,7 @@ def random_event_json(row_id):
         "party_id":                party_id,
         "session_id":              str(uuid.uuid4())[:8],
         "event_type":              random.choice(EVENT_TYPES),
-        "product_category_viewed": random.choice(PRODUCT_CATEGORIES),
+        "product_category_viewed": random.choice(PRODUCT_CATS),
         "page_name":               random.choice(PAGE_NAMES),
         "duration_seconds":        random.randint(2, 420),
         "device_type":             random.choice(DEVICE_TYPES),
