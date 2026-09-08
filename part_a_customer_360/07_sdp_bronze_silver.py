@@ -197,7 +197,7 @@ dp.create_streaming_table(
 
 dp.create_auto_cdc_flow(
     target="silver_customers",
-    source=f"{FULL}.bronze_customer_master",
+    source="bronze_customer_master",
     keys=["cif_number"],
     sequence_by=col("record_updated_timestamp"),
     stored_as_scd_type=2,
@@ -216,7 +216,7 @@ dp.create_streaming_table(
 
 dp.create_auto_cdc_flow(
     target="silver_deposit_accounts",
-    source=f"{FULL}.bronze_core_banking_accounts",
+    source="bronze_core_banking_accounts",
     keys=["deposit_account_id"],
     sequence_by=col("last_modified_timestamp"),
     stored_as_scd_type=2,
@@ -235,7 +235,7 @@ dp.create_streaming_table(
 
 dp.create_auto_cdc_flow(
     target="silver_loan_accounts",
-    source=f"{FULL}.bronze_loans",
+    source="bronze_loans",
     keys=["loan_account_id"],
     sequence_by=col("disbursement_date"),
     stored_as_scd_type=2,
@@ -258,7 +258,7 @@ dp.create_auto_cdc_flow(
           comment="Banking MVM: payment.payment_transaction. Append-only.",
           table_properties={"quality": "silver"})
 def silver_transactions():
-    return (spark.readStream.table(f"{FULL}.bronze_core_banking_txn")
+    return (spark.readStream.table("bronze_core_banking_txn")
             .withColumn("_silver_timestamp", current_timestamp()))
 
 # COMMAND ----------
@@ -273,7 +273,7 @@ def silver_transactions():
           comment="Banking MVM: payment.instruction (card). Append-only.",
           table_properties={"quality": "silver"})
 def silver_card_transactions():
-    return (spark.readStream.table(f"{FULL}.bronze_cards_txn")
+    return (spark.readStream.table("bronze_cards_txn")
             .withColumn("_silver_timestamp", current_timestamp()))
 
 # COMMAND ----------
