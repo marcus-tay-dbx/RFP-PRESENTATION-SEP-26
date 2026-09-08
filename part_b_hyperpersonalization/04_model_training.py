@@ -138,9 +138,20 @@ with mlflow.start_run(run_name="xgboost_recommendation_v1") as run:
         signature=infer_signature(pd.DataFrame(X_train, columns=FEATURES), y_proba),
     )
 
+    # Also log the raw XGBoost model as a native artifact (artifact_path="xgboost_model").
+    # fe.log_model registers only the pyfunc flavor; this lets batch_inference load
+    # the model with mlflow.xgboost.load_model() to call predict_proba() directly.
+    mlflow.xgboost.log_model(
+        model,
+        artifact_path="xgboost_model",
+        input_example=pd.DataFrame(X_test[:3], columns=FEATURES),
+        signature=infer_signature(pd.DataFrame(X_train, columns=FEATURES), y_proba),
+    )
+
     print(f"\n✅ Run ID: {run.info.run_id}")
     print(f"✅ Macro F1: {f1_macro:.4f}")
-    print(f"✅ Model registered: {MODEL_NAME}")
+    print(f"✅ Model registered: {MODEL_NAME} (feature-store pyfunc)")
+    print(f"✅ Native XGBoost artifact: runs:/{run.info.run_id}/xgboost_model")
 
 # COMMAND ----------
 # Tag as @dev alias
