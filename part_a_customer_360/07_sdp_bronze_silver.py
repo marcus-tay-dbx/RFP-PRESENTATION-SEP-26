@@ -26,7 +26,7 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 CATALOG = "fevm_master_classic_marcus_catalog"
-SCHEMA  = "abmb_rfp_presentation"
+SCHEMA  = "rfp_presentation"
 FULL    = f"{CATALOG}.{SCHEMA}"
 
 # COMMAND ----------
@@ -175,6 +175,6 @@ def silver_digital_activity():
 # MAGIC 2. Pipeline name: `DBX-Bronze-Silver`
 # MAGIC 3. Source: select this notebook (`07_sdp_bronze_silver.py`)
 # MAGIC 4. Target catalog: `fevm_master_classic_marcus_catalog`
-# MAGIC 5. Target schema: `abmb_rfp_presentation`
+# MAGIC 5. Target schema: `rfp_presentation`
 # MAGIC 6. Cluster: Serverless
 # MAGIC 7. Click Start — the pipeline creates all 7 silver tables automatically

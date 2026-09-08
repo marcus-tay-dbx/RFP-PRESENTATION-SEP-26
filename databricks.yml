@@ -9,8 +9,8 @@ variables:
     default: fevm_master_classic_marcus_catalog
     description: Unity Catalog name
   schema:
-    default: abmb_rfp_presentation
-    description: Schema for all DBX Bank demo assets
+    default: rfp_presentation
+    description: Schema for all DBX Bank RFP demo assets
 
 workspace:
   host: https://fevm-fevm-master-classic-marcus.cloud.databricks.com
@@ -34,4 +34,4 @@ targets:
     default: true
     variables:
       catalog: fevm_master_classic_marcus_catalog
-      schema: abmb_rfp_presentation
+      schema: rfp_presentation

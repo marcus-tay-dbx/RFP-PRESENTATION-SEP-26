@@ -256,4 +256,4 @@ if __name__ == "__main__":
         generate_pdf(p, OUT)
     print("\nAll PDFs generated.")
     print("Upload command:")
-    print("  databricks fs cp part_a_customer_360/data/pdfs/ dbfs:/Volumes/fevm_master_classic_marcus_catalog/abmb_rfp_presentation/product_pdfs/ --recursive --profile fevm-master-classic-marcus")
+    print("  databricks fs cp part_a_customer_360/data/pdfs/ dbfs:/Volumes/fevm_master_classic_marcus_catalog/rfp_presentation/product_pdfs/ --recursive --profile fevm-master-classic-marcus")

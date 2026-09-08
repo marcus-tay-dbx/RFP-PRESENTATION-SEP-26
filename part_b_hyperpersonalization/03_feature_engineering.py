@@ -145,7 +145,7 @@ print(f"   Features: {len(features_df.columns) - 1}")
 # COMMAND ----------
 # MAGIC %md ## Sync to Lakebase for Real-Time Lookup
 # MAGIC Enable Lakebase Synced Tables in the UI:
-# MAGIC 1. Go to Catalog → fevm_master_classic_marcus_catalog → abmb_rfp_presentation → customer_features
+# MAGIC 1. Go to Catalog → fevm_master_classic_marcus_catalog → rfp_presentation → customer_features
 # MAGIC 2. Click "Enable Lakebase Sync" → select project DBX-RFP-PRESENTATION
 # MAGIC 3. This creates a live Postgres replica for sub-millisecond feature lookup during serving
 # MAGIC

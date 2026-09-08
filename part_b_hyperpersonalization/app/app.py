@@ -12,7 +12,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 w = WorkspaceClient()
 
 CATALOG = "fevm_master_classic_marcus_catalog"
-SCHEMA  = "abmb_rfp_presentation"
+SCHEMA  = "rfp_presentation"
 FULL    = f"{CATALOG}.{SCHEMA}"
 
 

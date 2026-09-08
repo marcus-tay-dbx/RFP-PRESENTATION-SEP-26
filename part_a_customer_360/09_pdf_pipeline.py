@@ -20,7 +20,7 @@
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_parsed AS
+# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_parsed AS
 # MAGIC SELECT
 # MAGIC   path                                                               AS file_path,
 # MAGIC   regexp_extract(path, '[^/]+(?=\\.[Pp][Dd][Ff]$)')                AS product_code,
@@ -28,7 +28,7 @@
 # MAGIC   length(content)                                                    AS file_size_bytes,
 # MAGIC   current_timestamp()                                                AS parsed_at
 # MAGIC FROM read_files(
-# MAGIC   'dbfs:/Volumes/fevm_master_classic_marcus_catalog/abmb_rfp_presentation/product_pdfs',
+# MAGIC   'dbfs:/Volumes/fevm_master_classic_marcus_catalog/rfp_presentation/product_pdfs',
 # MAGIC   format => 'binaryFile',
 # MAGIC   pathGlobFilter => '*.pdf'
 # MAGIC );
@@ -36,14 +36,14 @@
 # COMMAND ----------
 # MAGIC %sql
 # MAGIC SELECT product_code, length(parsed_text) AS text_length_chars
-# MAGIC FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_parsed;
+# MAGIC FROM fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_parsed;
 
 # COMMAND ----------
 # MAGIC %md ## Node 2: ai_classify — Classify each brochure into product category
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_classified AS
+# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_classified AS
 # MAGIC SELECT
 # MAGIC   file_path,
 # MAGIC   product_code,
@@ -53,19 +53,19 @@
 # MAGIC     parsed_text,
 # MAGIC     ARRAY('CREDIT_CARD', 'PERSONAL_LOAN', 'HOME_LOAN', 'INVESTMENT', 'INSURANCE')
 # MAGIC   ) AS product_category
-# MAGIC FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_parsed;
+# MAGIC FROM fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_parsed;
 
 # COMMAND ----------
 # MAGIC %sql
 # MAGIC SELECT product_code, product_category
-# MAGIC FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_classified;
+# MAGIC FROM fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_classified;
 
 # COMMAND ----------
 # MAGIC %md ## Node 3: ai_extract — Extract 34 structured fields from each brochure
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_product_catalog AS
+# MAGIC CREATE OR REPLACE TABLE fevm_master_classic_marcus_catalog.rfp_presentation.silver_product_catalog AS
 # MAGIC SELECT
 # MAGIC   file_path, product_code, product_category, parsed_at,
 # MAGIC   ai_extract(parsed_text, named_struct(
@@ -105,7 +105,7 @@
 # MAGIC     'product_code_extracted', 'Internal product reference code or identifier'
 # MAGIC   )) AS extracted_fields,
 # MAGIC   current_timestamp() AS extracted_at
-# MAGIC FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_pdf_classified;
+# MAGIC FROM fevm_master_classic_marcus_catalog.rfp_presentation.silver_pdf_classified;
 
 # COMMAND ----------
 # MAGIC %md ## Validation
@@ -117,5 +117,5 @@
 # MAGIC   extracted_fields.min_amount_myr AS min_amount_myr,
 # MAGIC   extracted_fields.shariah_compliant AS shariah_compliant,
 # MAGIC   extracted_fields.effective_date AS effective_date
-# MAGIC FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.silver_product_catalog
+# MAGIC FROM fevm_master_classic_marcus_catalog.rfp_presentation.silver_product_catalog
 # MAGIC ORDER BY product_category;

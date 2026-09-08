@@ -1,7 +1,7 @@
 # Databricks notebook source
 # COMMAND ----------
 CATALOG = "fevm_master_classic_marcus_catalog"
-SCHEMA  = "abmb_rfp_presentation"
+SCHEMA  = "rfp_presentation"
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 VOLUME_DATA = f"/Volumes/{CATALOG}/{SCHEMA}/raw_data"
 VOLUME_PDFS = f"/Volumes/{CATALOG}/{SCHEMA}/product_pdfs"

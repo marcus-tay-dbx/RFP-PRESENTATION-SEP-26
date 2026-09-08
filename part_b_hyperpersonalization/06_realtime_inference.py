@@ -52,7 +52,7 @@ endpoint_config = {
     "ai_gateway": {
         "inference_table_config": {
             "catalog_name": "fevm_master_classic_marcus_catalog",
-            "schema_name":  "abmb_rfp_presentation",
+            "schema_name":  "rfp_presentation",
             "table_name_prefix": "endpoint_payload",
             "enabled": True
         },

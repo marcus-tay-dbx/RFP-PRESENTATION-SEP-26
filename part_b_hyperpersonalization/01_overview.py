@@ -26,7 +26,7 @@
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC DESCRIBE EXTENDED fevm_master_classic_marcus_catalog.abmb_rfp_presentation.gold_customer_360;
+# MAGIC DESCRIBE EXTENDED fevm_master_classic_marcus_catalog.rfp_presentation.gold_customer_360;
 
 # COMMAND ----------
 # MAGIC %md ## Segment Distribution

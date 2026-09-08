@@ -97,7 +97,7 @@ ABMB_RFP/
 
 | Notebook | What It Does |
 |---|---|
-| `00_setup.py` | Create UC schema (`abmb_rfp_presentation`), volumes (`raw_data`, `product_pdfs`), and volume subdirectories |
+| `00_setup.py` | Create UC schema (`rfp_presentation`), volumes (`raw_data`, `product_pdfs`), and volume subdirectories |
 | `01_data_generator.py` | Generate 1,000 synthetic customer records across all source-system feeds and write CSVs/JSON to the raw_data volume |
 | `02_ingest_batch.py` | AutoLoader batch ingest of 5 CSV feeds into bronze Delta tables with `rescuedDataColumn` |
 | `03_ingest_nearrt.py` | AutoLoader near-real-time ingest of credit bureau (CTOS/CCRIS) and telco event JSON using `trigger(availableNow=True)` |
@@ -198,9 +198,9 @@ All assets land in the configured catalog and schema (defaults below).
 
 | Asset | Full Name | Type |
 |---|---|---|
-| UC schema | `fevm_master_classic_marcus_catalog.abmb_rfp_presentation` | Schema |
-| Raw data volume | `.../abmb_rfp_presentation.raw_data` | UC Volume |
-| Product PDFs volume | `.../abmb_rfp_presentation.product_pdfs` | UC Volume |
+| UC schema | `fevm_master_classic_marcus_catalog.rfp_presentation` | Schema |
+| Raw data volume | `.../rfp_presentation.raw_data` | UC Volume |
+| Product PDFs volume | `.../rfp_presentation.product_pdfs` | UC Volume |
 | Silver tables (×7) | `silver_customers`, `silver_deposit_accounts`, `silver_loan_accounts`, `silver_transactions`, `silver_card_transactions`, `silver_kyc_compliance`, `silver_digital_activity` | Delta (SCD2) |
 | Gold Customer 360 | `gold_customer_360` | Delta (materialised) |
 | Feature table | `customer_features` | Delta + Feature Store |

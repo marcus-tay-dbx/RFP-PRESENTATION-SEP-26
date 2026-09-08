@@ -32,7 +32,7 @@ from pyspark import pipelines as dp
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-FULL = "fevm_master_classic_marcus_catalog.abmb_rfp_presentation"
+FULL = "fevm_master_classic_marcus_catalog.rfp_presentation"
 
 # COMMAND ----------
 # MAGIC %md
@@ -266,11 +266,11 @@ def gold_customer_360():
 # MAGIC 2. Name: `DBX-Silver-Gold`
 # MAGIC 3. Source: this notebook (`08_sdp_silver_gold.py`)
 # MAGIC 4. Target catalog: `fevm_master_classic_marcus_catalog`
-# MAGIC 5. Target schema: `abmb_rfp_presentation`
+# MAGIC 5. Target schema: `rfp_presentation`
 # MAGIC 6. Serverless → Start
 # MAGIC 7. Validate:
 # MAGIC    ```sql
-# MAGIC    SELECT COUNT(*) FROM fevm_master_classic_marcus_catalog.abmb_rfp_presentation.gold_customer_360
+# MAGIC    SELECT COUNT(*) FROM fevm_master_classic_marcus_catalog.rfp_presentation.gold_customer_360
 # MAGIC    ```
 # MAGIC    Expected: ~1000 rows
 # MAGIC

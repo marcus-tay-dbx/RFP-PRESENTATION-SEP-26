@@ -31,7 +31,7 @@ H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 username = ctx.userName().get().replace("@","_").replace(".","_")
 SERVICE_NAME = f"abmb-glm-email-service-{username[:20]}"
 CATALOG_NAME = "fevm_master_classic_marcus_catalog"
-SCHEMA_NAME  = "abmb_rfp_presentation"
+SCHEMA_NAME  = "rfp_presentation"
 
 # COMMAND ----------
 # MAGIC %md ## Section A: Create GLM 5.2 Model Service
@@ -69,7 +69,7 @@ print(resp.json()["choices"][0]["message"]["content"] if resp.status_code == 200
 # MAGIC
 # MAGIC Configure:
 # MAGIC - Catalog: fevm_master_classic_marcus_catalog
-# MAGIC - Schema: abmb_rfp_presentation
+# MAGIC - Schema: rfp_presentation
 # MAGIC - Table prefix: glm_email_payload
 # MAGIC
 # MAGIC This creates `glm_email_payload_inference_table` — every prompt and response logged.
