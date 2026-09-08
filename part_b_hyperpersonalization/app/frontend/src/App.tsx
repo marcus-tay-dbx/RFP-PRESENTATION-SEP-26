@@ -75,6 +75,9 @@ export default function App() {
   const [showEmail, setShowEmail]       = useState(false);
   const [emailDraft, setEmailDraft]     = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
+  const [showExplain, setShowExplain]   = useState<1|2|null>(null);
+  const [explanation, setExplanation]   = useState('');
+  const [explainLoading, setExplainLoading] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load top 20 customers on mount
@@ -167,6 +170,28 @@ export default function App() {
       setEmailDraft('Error generating email. Please try again.');
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  const explainRec = async (rank: 1|2) => {
+    if (!customer || !recs) return;
+    const product    = rank === 1 ? recs.recommendation_1 : recs.recommendation_2;
+    const confidence = rank === 1 ? recs.confidence_1     : recs.confidence_2;
+    setShowExplain(rank);
+    setExplanation('');
+    setExplainLoading(true);
+    try {
+      const res = await fetch('/api/explain-recommendation', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ party_id: customer.party_id, product, confidence, recommendation_rank: rank }),
+      });
+      const data = await res.json();
+      setExplanation(data.explanation || '(No explanation returned)');
+    } catch {
+      setExplanation('Unable to generate explanation. Please try again.');
+    } finally {
+      setExplainLoading(false);
     }
   };
 
@@ -638,11 +663,19 @@ export default function App() {
                               </div>
                             </div>
                             {/* Confidence bar */}
-                            <div style={{ background: C.g200, borderRadius: '4px', height: '5px' }}>
+                            <div style={{ background: C.g200, borderRadius: '4px', height: '5px', marginBottom: '10px' }}>
                               <div style={{ width: `${conf}%`, background: p.color,
                                             height: '5px', borderRadius: '4px',
                                             transition: 'width 0.8s ease' }} />
                             </div>
+                            {/* Why button */}
+                            <button
+                              onClick={() => explainRec(rank as 1|2)}
+                              style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px',
+                                       border: `1px solid ${C.navy}`, background: 'transparent',
+                                       color: C.navy, cursor: 'pointer', fontWeight: 600 }}>
+                              🤖 Why this product?
+                            </button>
                           </div>
                         );
                       })}
@@ -807,6 +840,83 @@ export default function App() {
                   📋 Copy
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════ FMAPI EXPLAIN MODAL ═══════════════════════════════════════ */}
+      {showExplain !== null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      zIndex: 1000 }}>
+          <div style={{ background: C.white, borderRadius: '16px', padding: '28px',
+                        width: '480px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '16px', color: C.navy }}>
+                  🤖 Why This Product?
+                </div>
+                <div style={{ fontSize: '12px', color: C.g400, marginTop: '2px' }}>
+                  AI-powered explanation · powered by GLM 5.2 via FMAPI
+                </div>
+              </div>
+              <button onClick={() => { setShowExplain(null); setExplanation(''); }}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer',
+                         color: C.g400, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Product badge */}
+            {recs && showExplain && (() => {
+              const prod = showExplain === 1 ? recs.recommendation_1 : recs.recommendation_2;
+              const conf = showExplain === 1 ? recs.confidence_1 : recs.confidence_2;
+              const p    = getProd(prod);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '12px 16px', borderRadius: '10px', background: '#EEF2FF',
+                              marginBottom: '16px' }}>
+                  <span style={{ fontSize: '28px' }}>{p.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: C.navy }}>{p.label}</div>
+                    <div style={{ fontSize: '12px', color: C.g400 }}>{conf}% confidence · #{showExplain} recommendation</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Explanation */}
+            <div style={{ minHeight: '80px', padding: '14px', borderRadius: '10px',
+                          background: C.bg, border: `1px solid ${C.g200}`, fontSize: '14px',
+                          lineHeight: 1.6, color: C.g600 }}>
+              {explainLoading ? (
+                <div style={{ color: C.g400, fontStyle: 'italic' }}>
+                  ⏳ GLM 5.2 is analyzing {customer?.legal_name}'s profile…
+                </div>
+              ) : explanation || (
+                <div style={{ color: C.g400, fontStyle: 'italic' }}>
+                  Click "Explain" to generate an AI explanation.
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontSize: '11px', color: C.g400, marginTop: '10px', fontStyle: 'italic' }}>
+              ✓ Generated by GLM 5.2 via Unity AI Gateway · logged for compliance
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => { setShowExplain(null); setExplanation(''); }}
+                style={{ padding: '8px 16px', border: `1px solid ${C.g200}`, borderRadius: '8px',
+                         background: C.white, cursor: 'pointer', fontSize: '13px', color: C.g600 }}>
+                Close
+              </button>
+              {explanation && (
+                <button onClick={() => navigator.clipboard.writeText(explanation)}
+                  style={{ padding: '8px 16px', background: C.navy, color: C.white, border: 'none',
+                           borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+                  📋 Copy
+                </button>
+              )}
             </div>
           </div>
         </div>

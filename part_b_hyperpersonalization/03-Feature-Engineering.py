@@ -92,14 +92,9 @@ def map_col(col_name, mapping, default=0):
 
 df = (
     raw
-    # ── Tenure ────────────────────────────────────────────────────────────────
-    .withColumn(
-        "tenure_years",
-        F.round(
-            F.datediff(F.current_date(), F.to_date(F.col("relationship_start_date"))) / 365.25,
-            2
-        ).cast(FloatType())
-    )
+    # ── Tenure — use pre-computed column from gold_customer_360 ──────────────
+    # gold_customer_360 already computes relationship_tenure_years; rename it
+    .withColumn("tenure_years", F.col("relationship_tenure_years").cast(FloatType()))
     # ── Encodings ─────────────────────────────────────────────────────────────
     .withColumn("net_worth_band_encoded",           map_col("net_worth_band",                net_worth_map))
     .withColumn("ccris_status_encoded",             map_col("ccris_status",                  ccris_map))

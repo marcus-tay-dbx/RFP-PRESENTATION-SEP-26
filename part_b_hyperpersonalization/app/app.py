@@ -269,6 +269,88 @@ Write a short, warm, professional email {lang_instr} (maximum 150 words).
     }
 
 
+# ── FMAPI: Explain why a product is recommended ───────────────────────────────
+class ExplainRequest(BaseModel):
+    party_id:      str
+    product:       str
+    confidence:    float = 0.0
+    recommendation_rank: int = 1   # 1 = primary, 2 = secondary
+
+
+@app.post("/api/explain-recommendation")
+def explain_recommendation(req: ExplainRequest):
+    """
+    Uses GLM 5.2 (via FMAPI / Unity AI Gateway) to explain in plain English
+    why this product was recommended for this customer, based on their 360 profile.
+    """
+    product_name = PRODUCT_MAP.get(req.product, req.product)
+
+    # Fetch customer profile
+    try:
+        c = get_customer_360(req.party_id)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    name          = c.get("legal_name", "the customer")
+    segment       = c.get("lifestyle_segment", "")
+    income        = c.get("annual_income_amount", 0)
+    ctos          = c.get("ctos_score", "N/A")
+    tenure        = c.get("relationship_tenure_years", 0)
+    has_card      = c.get("has_credit_card", False)
+    has_home_loan = c.get("has_home_loan", False)
+    has_personal  = c.get("has_personal_loan", False)
+    commitment    = c.get("monthly_loan_commitment_myr", 0)
+    net_worth     = c.get("net_worth_band", "")
+    digital_score = c.get("digital_maturity_score", 0)
+    product_views = c.get("last_product_category_viewed", "")
+
+    prompt = f"""You are an Alliance Bank AI advisor. A machine learning model has recommended "{product_name}" for a customer with the following profile:
+
+Customer Profile:
+- Name: {name} | Segment: {segment} | Tenure: {tenure} years
+- Annual Income: MYR {income:,.0f} | Net Worth Band: {net_worth}
+- CTOS Credit Score: {ctos}/850
+- Existing Products: Credit Card={has_card}, Home Loan={has_home_loan}, Personal Loan={has_personal}
+- Monthly Loan Commitment: MYR {commitment:,.0f}
+- Digital Maturity Score: {digital_score}/10
+- Last Product Viewed: {product_views}
+
+Model confidence: {req.confidence:.0f}%
+
+In 2-3 concise sentences, explain to a bank relationship manager WHY "{product_name}" was recommended for this specific customer. Reference 2-3 specific profile attributes that made this recommendation. Be factual and data-driven. Do not use financial jargon."""
+
+    payload = {
+        "messages":    [{"role": "user", "content": prompt}],
+        "max_tokens":  200,
+        "temperature": 0.3,
+    }
+
+    try:
+        # Try AI Gateway service first, fall back to FMAPI direct
+        try:
+            resp = w.serving_endpoints.query(name=_glm_service(), request=payload)
+        except Exception:
+            resp = w.serving_endpoints.query(name="databricks-glm-5-2", request=payload)
+
+        if hasattr(resp, "choices") and resp.choices:
+            explanation = resp.choices[0].message.content
+        elif isinstance(resp, dict):
+            explanation = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+        else:
+            explanation = str(resp)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"FMAPI error: {str(e)}")
+
+    return {
+        "party_id":     req.party_id,
+        "product":      req.product,
+        "product_name": product_name,
+        "confidence":   req.confidence,
+        "explanation":  explanation,
+        "model":        "system.ai.databricks-glm-5-2",
+    }
+
+
 # ── Serve React frontend ──────────────────────────────────────────────────────
 if os.path.exists("frontend/dist"):
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
