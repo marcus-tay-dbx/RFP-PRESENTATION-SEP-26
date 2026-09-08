@@ -19,13 +19,13 @@ FULL    = f"{CATALOG}.{SCHEMA}"
 def _get_endpoint_name():
     ctx   = os.environ.get("DATABRICKS_USERNAME", "demo")
     clean = re.sub(r'[^a-zA-Z0-9_]', '_', ctx)[:20]
-    return f"abmb-product-recommendation-{clean}"
+    return f"dbx-product-recommendation-{clean}"
 
 
 def _get_glm_service():
     ctx   = os.environ.get("DATABRICKS_USERNAME", "demo")
     clean = re.sub(r'[^a-zA-Z0-9_]', '_', ctx)[:20]
-    return f"abmb-glm-email-service-{clean}"
+    return f"dbx-glm-email-service-{clean}"
 
 
 def _get_warehouse():

@@ -29,7 +29,7 @@ HOST = _api_url if _api_url.startswith("https://") else f"https://{_api_url}"
 TOKEN = ctx.apiToken().get()
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 username = ctx.userName().get().replace("@","_").replace(".","_")
-SERVICE_NAME = f"abmb-glm-email-service-{username[:20]}"
+SERVICE_NAME = f"dbx-glm-email-service-{username[:20]}"
 CATALOG_NAME = "fevm_master_classic_marcus_catalog"
 SCHEMA_NAME  = "rfp_presentation"
 

@@ -20,7 +20,7 @@ from sklearn.preprocessing import LabelEncoder
 
 mlflow.set_registry_uri("databricks-uc")
 client = MlflowClient()
-MODEL_NAME = f"{FULL_SCHEMA}.abmb_recommendation_model"
+MODEL_NAME = f"{FULL_SCHEMA}.product_recommendation_model"
 
 FEATURES = ["tenure_years","total_deposit_balance_myr","num_accounts","annual_income_amount",
             "net_worth_band_encoded","ctos_score","ccris_status_encoded","payment_conduct_score",
@@ -67,7 +67,7 @@ host     = _api_url if _api_url.startswith("https://") else f"https://{_api_url}
 token    = ctx.apiToken().get()
 headers  = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 username = ctx.userName().get().replace("@","_").replace(".","_")
-ENDPOINT_NAME = f"abmb-product-recommendation-{username[:20]}"
+ENDPOINT_NAME = f"dbx-product-recommendation-{username[:20]}"
 
 update_payload = {
     "served_models": [{

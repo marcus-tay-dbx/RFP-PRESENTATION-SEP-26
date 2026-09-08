@@ -12,7 +12,7 @@ dbutils.library.restartPython()
 import mlflow, requests, json, time
 from mlflow import MlflowClient
 mlflow.set_registry_uri("databricks-uc")
-MODEL_NAME = f"{FULL_SCHEMA}.abmb_recommendation_model"
+MODEL_NAME = f"{FULL_SCHEMA}.product_recommendation_model"
 
 # COMMAND ----------
 # MAGIC %md
@@ -32,7 +32,7 @@ _api_url = ctx.apiUrl().get()
 host     = _api_url if _api_url.startswith("https://") else f"https://{_api_url}"
 token    = ctx.apiToken().get()
 username = ctx.userName().get().replace("@", "_").replace(".", "_")
-ENDPOINT_NAME = f"abmb-product-recommendation-{username[:20]}"
+ENDPOINT_NAME = f"dbx-product-recommendation-{username[:20]}"
 headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 # COMMAND ----------

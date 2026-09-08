@@ -1,6 +1,6 @@
 resources:
   pipelines:
-    abmb_pipeline:
+    dbx_pipeline:
       name: DBX-Customer-360-Pipeline
       serverless: true
       catalog: ${var.catalog}
@@ -8,9 +8,9 @@ resources:
       libraries:
         # Bronze → Silver: SCD2 ingestion into 7 Banking MVM-conformed silver tables
         - notebook:
-            path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/07_sdp_bronze_silver
+            path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/07_sdp_bronze_silver
         # Silver → Gold: Aggregations + join into gold_customer_360 (reads from silver tables above)
         - notebook:
-            path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/08_sdp_silver_gold
+            path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/08_sdp_silver_gold
       channel: CURRENT
       development: true

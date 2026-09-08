@@ -12,7 +12,7 @@ dbutils.library.restartPython()
 import mlflow, shap, matplotlib.pyplot as plt
 from mlflow import MlflowClient
 mlflow.set_registry_uri("databricks-uc")
-MODEL_NAME = f"{FULL_SCHEMA}.abmb_recommendation_model"
+MODEL_NAME = f"{FULL_SCHEMA}.product_recommendation_model"
 
 # COMMAND ----------
 # MAGIC %md ## Section A: Compare MLflow Runs

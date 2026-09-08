@@ -1,6 +1,6 @@
 resources:
   jobs:
-    abmb_setup_and_ingest:
+    dbx_setup_and_ingest:
       name: DBX-Part-A-Setup-and-Ingest
       description: "End-to-end Part A: setup → data gen → bronze ingest → Bronze-Silver-Gold pipeline"
 
@@ -8,7 +8,7 @@ resources:
         - task_key: setup
           description: "Create schema, volumes, and directory structure"
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/00_setup
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/00_setup
             source: WORKSPACE
           environment_key: serverless
 
@@ -17,7 +17,7 @@ resources:
           depends_on:
             - task_key: setup
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/01_data_generator
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/01_data_generator
             source: WORKSPACE
           environment_key: serverless
 
@@ -26,7 +26,7 @@ resources:
           depends_on:
             - task_key: generate_data
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/02_ingest_batch
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/02_ingest_batch
             source: WORKSPACE
           environment_key: serverless
 
@@ -35,7 +35,7 @@ resources:
           depends_on:
             - task_key: generate_data
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/03_ingest_nearrt
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/03_ingest_nearrt
             source: WORKSPACE
           environment_key: serverless
 
@@ -45,7 +45,7 @@ resources:
             - task_key: ingest_batch
             - task_key: ingest_nearrt
           pipeline_task:
-            pipeline_id: ${resources.pipelines.abmb_pipeline.id}
+            pipeline_id: ${resources.pipelines.dbx_pipeline.id}
 
       environments:
         - environment_key: serverless

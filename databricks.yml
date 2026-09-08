@@ -1,5 +1,5 @@
 bundle:
-  name: abmb-rfp-presentation
+  name: rfp-presentation-sep26
 
 include:
   - resources/*.yml
@@ -14,7 +14,7 @@ variables:
 
 workspace:
   host: https://fevm-fevm-master-classic-marcus.cloud.databricks.com
-  root_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation
+  root_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26
 
 sync:
   include:

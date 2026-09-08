@@ -117,7 +117,7 @@ Deploy the bundle and run the end-to-end Part A job with one command:
 databricks bundle deploy
 
 # Run Part A: setup → data gen → batch ingest + near-RT ingest → DLT pipeline
-databricks bundle run abmb_setup_and_ingest
+databricks bundle run dbx_setup_and_ingest
 ```
 
 This single job runs the full sequence: `setup` → `generate_data` → (`ingest_batch` ∥ `ingest_nearrt`) → `run_pipeline` (DLT).
@@ -170,7 +170,7 @@ All seven tables use **SCD Type 2** — full history is preserved automatically 
 
 ```bash
 # Run Part B: feature engineering → model training → endpoint deploy → batch inference
-databricks bundle run abmb_part_b_training
+databricks bundle run dbx_part_b_training
 ```
 
 Job task sequence: `feature_engineering` → `model_training` → `realtime_endpoint` → `batch_inference`.
@@ -205,7 +205,7 @@ All assets land in the configured catalog and schema (defaults below).
 | Gold Customer 360 | `gold_customer_360` | Delta (materialised) |
 | Feature table | `customer_features` | Delta + Feature Store |
 | Gold recommendations | `gold_product_recommendations` | Delta |
-| ML model | `abmb_recommendation_model` | UC Registered Model |
+| ML model | `product_recommendation_model` | UC Registered Model |
 | DLT pipeline | `DBX-Customer-360-Pipeline` | Serverless DLT pipeline |
 | Serving endpoint | `dbx-product-recommendation-<username>` | Model Serving |
 | Lakebase project | `DBX-RFP-PRESENTATION` | Lakebase Postgres |
@@ -223,13 +223,13 @@ databricks bundle validate
 databricks bundle deploy
 
 # Run Part A end-to-end (setup → ingest → DLT pipeline)
-databricks bundle run abmb_setup_and_ingest
+databricks bundle run dbx_setup_and_ingest
 
 # Run Part B end-to-end (feature eng → train → endpoint → batch score)
-databricks bundle run abmb_part_b_training
+databricks bundle run dbx_part_b_training
 
 # Check job run status
-databricks bundle run --no-wait abmb_setup_and_ingest
+databricks bundle run --no-wait dbx_setup_and_ingest
 databricks jobs list-runs --job-name DBX-Part-A-Setup-and-Ingest
 
 # Destroy all deployed resources (use with caution)
@@ -247,7 +247,7 @@ The catalog and schema are bundle variables defined in `databricks.yml`. Overrid
 databricks bundle deploy -v catalog=my_catalog -v schema=my_demo_schema
 
 # Run Part A against the overridden schema
-databricks bundle run abmb_setup_and_ingest -v catalog=my_catalog -v schema=my_demo_schema
+databricks bundle run dbx_setup_and_ingest -v catalog=my_catalog -v schema=my_demo_schema
 ```
 
 To change the defaults permanently, edit the `variables` block in `databricks.yml`:

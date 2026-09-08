@@ -34,7 +34,7 @@ mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment(f"/Users/{dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()}/dbx-product-recommendation-training")
 
 FEATURE_TABLE = f"{FULL_SCHEMA}.customer_features"
-MODEL_NAME    = f"{FULL_SCHEMA}.abmb_recommendation_model"
+MODEL_NAME    = f"{FULL_SCHEMA}.product_recommendation_model"
 FEATURES = [
     "tenure_years","total_deposit_balance_myr","num_accounts","annual_income_amount",
     "net_worth_band_encoded","ctos_score","ccris_status_encoded","payment_conduct_score",

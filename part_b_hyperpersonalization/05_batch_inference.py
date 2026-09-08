@@ -18,7 +18,7 @@ from pyspark.sql.functions import current_timestamp
 mlflow.set_registry_uri("databricks-uc")
 
 # ── Deployed resource names (UC) ──────────────────────────────────────────────
-MODEL_NAME    = f"{FULL_SCHEMA}.abmb_recommendation_model"   # UC-registered model
+MODEL_NAME    = f"{FULL_SCHEMA}.product_recommendation_model"   # UC-registered model
 FEATURE_TABLE = f"{FULL_SCHEMA}.customer_features"
 
 FEATURES = [
