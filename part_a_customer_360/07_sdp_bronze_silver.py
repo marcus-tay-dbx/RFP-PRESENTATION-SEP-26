@@ -191,7 +191,7 @@ dp.create_auto_cdc_flow(
     keys=["cif_number"],
     sequence_by=col("record_updated_timestamp"),
     stored_as_scd_type=2,
-    except_column_list=["_rescued_data", "_source_file", "_ingest_timestamp"]
+    except_column_list=["_rescued_data"]
 )
 
 # COMMAND ----------
@@ -210,7 +210,7 @@ dp.create_auto_cdc_flow(
     keys=["deposit_account_id"],
     sequence_by=col("last_modified_timestamp"),
     stored_as_scd_type=2,
-    except_column_list=["_rescued_data", "_source_file"]
+    except_column_list=["_rescued_data"]
 )
 
 # COMMAND ----------
