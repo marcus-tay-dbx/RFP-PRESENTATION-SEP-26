@@ -57,28 +57,27 @@ display(spark.sql(f"SELECT txn_id, amount, posting_date, status, _rescued_data F
 
 # COMMAND ----------
 # MAGIC %md ## Step 2: Inject 3 malformed rows — each has a different data quality problem
+# MAGIC
+# MAGIC **Note on implementation:** In production, AutoLoader streaming rescues values automatically
+# MAGIC during ingestion (bad field → NULL in column, raw value → JSON in `_rescued_data`).
+# MAGIC For this demo we construct the rescued rows explicitly — showing the exact state the
+# MAGIC bronze table would be in after AutoLoader processes malformed data.
 
 # COMMAND ----------
-malformed_data = pd.DataFrame([
-    {"txn_id": "T000021", "amount": "TWO HUNDRED",    # ← string where DECIMAL expected
-     "posting_date": "2026-09-02", "status": "settled"},
-    {"txn_id": "T000022", "amount": 500.00,
-     "posting_date": "not-a-date",                      # ← invalid date format
-     "status": "settled"},
-    {"txn_id": "T000023", "amount": 750.00,
-     "posting_date": "2026-09-02", "status": "settled",
-     "fraud_score": 0.95},                               # ← unknown extra column
-])
-malformed_data.to_csv(f"{VOLUME_DATA}/rescued_demo/malformed/txns_bad.csv", index=False)
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType
 
-spark.read \
-    .format("csv") \
-    .option("header", "true") \
-    .option("inferSchema", "true") \
-    .option("rescuedDataColumn", "_rescued_data") \
-    .load(f"{VOLUME_DATA}/rescued_demo/malformed/") \
-    .withColumn("_ingest_timestamp", current_timestamp()) \
-    .write.format("delta").mode("append") \
+# These rows represent what AutoLoader produces after rescuing malformed fields:
+#   T000021: amount="TWO HUNDRED" → amount=NULL, _rescued_data={"amount":"TWO HUNDRED"}
+#   T000022: posting_date="not-a-date" → posting_date=NULL, _rescued_data={"posting_date":"not-a-date"}
+#   T000023: unknown column fraud_score → _rescued_data={"fraud_score":"0.95"}
+rescued_rows = spark.createDataFrame([
+    ("T000021", None,   "2026-09-02", "settled", '{"amount": "TWO HUNDRED"}'),
+    ("T000022", 500.00, None,         "settled", '{"posting_date": "not-a-date"}'),
+    ("T000023", 750.00, "2026-09-02", "settled", '{"fraud_score": "0.95"}'),
+], ["txn_id", "amount", "posting_date", "status", "_rescued_data"]) \
+    .withColumn("_ingest_timestamp", current_timestamp())
+
+rescued_rows.write.format("delta").mode("append") \
     .option("mergeSchema", "true") \
     .saveAsTable(f"{FULL_SCHEMA}.bronze_rescued_demo")
 
