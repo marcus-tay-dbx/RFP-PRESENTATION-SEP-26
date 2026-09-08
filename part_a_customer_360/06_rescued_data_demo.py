@@ -1,37 +1,37 @@
 # Databricks notebook source
-# COMMAND ----------
 # MAGIC %run ../shared/config
 
 # COMMAND ----------
 # MAGIC %md
 # MAGIC # Rescued Data Column Demo — Handling Malformed Values
 # MAGIC
-# MAGIC **Story:** The Cards system occasionally sends malformed data — string where number expected,
-# MAGIC invalid dates, unknown extra columns. AutoLoader's `_rescued_data` column captures all
-# MAGIC malformed values as JSON, preserving the good rows while quarantining bad ones.
-# MAGIC The SDP pipeline then routes these rows to a quarantine table via:
-# MAGIC `CONSTRAINT no_rescued_data EXPECT (_rescued_data IS NULL) ON VIOLATION QUARANTINE`
+# MAGIC **Story:** The Cards system occasionally sends malformed data — a string where a number
+# MAGIC is expected, an invalid date, an unknown extra column. AutoLoader's `_rescued_data`
+# MAGIC column captures all malformed values as JSON, preserving every row while quarantining
+# MAGIC the bad fields. Downstream SDP pipelines then route these rows via:
+# MAGIC
+# MAGIC ```python
+# MAGIC @dp.expect("no_rescued_data", "_rescued_data IS NULL")   # ALLOW — flags but keeps
+# MAGIC ```
 
 # COMMAND ----------
 # MAGIC %md ## ⚙️ RESET — Run first
 
 # COMMAND ----------
-# RESET CELL — idempotent, run before every demo
-import os, shutil
+import os, shutil, pandas as pd
+from pyspark.sql.functions import current_timestamp
+
 spark.sql(f"DROP TABLE IF EXISTS {FULL_SCHEMA}.bronze_rescued_demo")
-for p in [f"{VOLUME_DATA}/rescued_demo", f"{VOLUME_DATA}/_schemas/rescued_demo"]:
+for p in [f"{VOLUME_DATA}/rescued_demo"]:
     shutil.rmtree(p, ignore_errors=True)
 os.makedirs(f"{VOLUME_DATA}/rescued_demo/clean",    exist_ok=True)
 os.makedirs(f"{VOLUME_DATA}/rescued_demo/malformed", exist_ok=True)
 print("✅ Reset complete")
 
 # COMMAND ----------
-# MAGIC %md ## Step 1: Clean ingestion baseline
+# MAGIC %md ## Step 1: Clean ingestion baseline — all 20 rows pass, `_rescued_data` = NULL
 
 # COMMAND ----------
-import pandas as pd
-from pyspark.sql.functions import current_timestamp
-
 clean_data = pd.DataFrame([
     {"txn_id": f"T{i:06d}", "amount": round(i * 100.50, 2),
      "posting_date": "2026-09-01", "status": "settled"}
@@ -39,87 +39,105 @@ clean_data = pd.DataFrame([
 ])
 clean_data.to_csv(f"{VOLUME_DATA}/rescued_demo/clean/txns_clean.csv", index=False)
 
-(spark.readStream.format("cloudFiles").option("cloudFiles.format","csv")
-    .option("cloudFiles.inferColumnTypes","true").option("header","true")
-    .option("cloudFiles.schemaLocation", f"{VOLUME_DATA}/_schemas/rescued_demo")
-    .option("rescuedDataColumn","_rescued_data")
-    .load(f"{VOLUME_DATA}/rescued_demo/clean/")
-    .withColumn("_ingest_timestamp", current_timestamp())
-    .writeStream.format("delta")
-    .option("checkpointLocation", f"{VOLUME_DATA}/_schemas/rescued_demo/checkpoint")
-    .trigger(availableNow=True)
-    .toTable(f"{FULL_SCHEMA}.bronze_rescued_demo")
-).awaitTermination()
+spark.read \
+    .format("csv") \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .option("rescuedDataColumn", "_rescued_data") \
+    .load(f"{VOLUME_DATA}/rescued_demo/clean/") \
+    .withColumn("_ingest_timestamp", current_timestamp()) \
+    .write.format("delta").mode("overwrite") \
+    .option("overwriteSchema", "true") \
+    .saveAsTable(f"{FULL_SCHEMA}.bronze_rescued_demo")
 
-display(spark.sql(f"SELECT *, _rescued_data FROM {FULL_SCHEMA}.bronze_rescued_demo"))
-print("✅ All rows clean — _rescued_data is NULL for every row")
+rescued_count = spark.sql(f"SELECT COUNT(*) FROM {FULL_SCHEMA}.bronze_rescued_demo WHERE _rescued_data IS NOT NULL").collect()[0][0]
+print(f"✅ {spark.table(f'{FULL_SCHEMA}.bronze_rescued_demo').count()} rows loaded")
+print(f"   _rescued_data IS NOT NULL: {rescued_count}  ← should be 0")
+display(spark.sql(f"SELECT txn_id, amount, posting_date, status, _rescued_data FROM {FULL_SCHEMA}.bronze_rescued_demo"))
 
 # COMMAND ----------
-# MAGIC %md ## Step 2: Inject malformed rows
+# MAGIC %md ## Step 2: Inject 3 malformed rows — each has a different data quality problem
 
 # COMMAND ----------
 malformed_data = pd.DataFrame([
-    {"txn_id": "T000021", "amount": "TWO HUNDRED",   # ← string where DECIMAL expected
+    {"txn_id": "T000021", "amount": "TWO HUNDRED",    # ← string where DECIMAL expected
      "posting_date": "2026-09-02", "status": "settled"},
     {"txn_id": "T000022", "amount": 500.00,
-     "posting_date": "not-a-date",                     # ← invalid date
+     "posting_date": "not-a-date",                      # ← invalid date format
      "status": "settled"},
     {"txn_id": "T000023", "amount": 750.00,
      "posting_date": "2026-09-02", "status": "settled",
-     "fraud_score": 0.95},                              # ← unknown extra column
+     "fraud_score": 0.95},                               # ← unknown extra column
 ])
 malformed_data.to_csv(f"{VOLUME_DATA}/rescued_demo/malformed/txns_bad.csv", index=False)
 
-(spark.readStream.format("cloudFiles").option("cloudFiles.format","csv")
-    .option("cloudFiles.inferColumnTypes","true").option("header","true")
-    .option("cloudFiles.schemaLocation", f"{VOLUME_DATA}/_schemas/rescued_demo")
-    .option("cloudFiles.schemaEvolutionMode","addNewColumns")
-    .option("rescuedDataColumn","_rescued_data")
-    .load(f"{VOLUME_DATA}/rescued_demo/malformed/")
-    .withColumn("_ingest_timestamp", current_timestamp())
-    .writeStream.format("delta")
-    .option("checkpointLocation", f"{VOLUME_DATA}/_schemas/rescued_demo/checkpoint")
-    .trigger(availableNow=True).option("mergeSchema","true")
-    .toTable(f"{FULL_SCHEMA}.bronze_rescued_demo")
-).awaitTermination()
+spark.read \
+    .format("csv") \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .option("rescuedDataColumn", "_rescued_data") \
+    .load(f"{VOLUME_DATA}/rescued_demo/malformed/") \
+    .withColumn("_ingest_timestamp", current_timestamp()) \
+    .write.format("delta").mode("append") \
+    .option("mergeSchema", "true") \
+    .saveAsTable(f"{FULL_SCHEMA}.bronze_rescued_demo")
+
+print(f"✅ Total rows now: {spark.table(f'{FULL_SCHEMA}.bronze_rescued_demo').count()}  (expected 23)")
 
 # COMMAND ----------
-# MAGIC %md ## Step 3: Inspect rescued data — malformed values captured as JSON
+# MAGIC %md ## Step 3: Inspect rescued rows — malformed values captured as JSON, row preserved
 
 # COMMAND ----------
 display(spark.sql(f"""
-SELECT txn_id, amount, posting_date, status, _rescued_data
-FROM {FULL_SCHEMA}.bronze_rescued_demo
-WHERE _rescued_data IS NOT NULL
+SELECT txn_id, amount, posting_date, status, fraud_score, _rescued_data
+FROM   {FULL_SCHEMA}.bronze_rescued_demo
+WHERE  _rescued_data IS NOT NULL
+ORDER BY txn_id
 """))
-# Expected: rows T000021, T000022, T000023 each show _rescued_data with the bad field as JSON
-# T000021: {{"amount": "TWO HUNDRED"}}
-# T000022: {{"posting_date": "not-a-date"}}
-# T000023: {{"fraud_score": "0.95"}}  ← captured even though it was an unknown column
+# Expected:
+# T000021: amount=NULL, _rescued_data={{"amount":"TWO HUNDRED"}}
+# T000022: posting_date=NULL, _rescued_data={{"posting_date":"not-a-date"}}
+# T000023: fraud_score=NULL (unknown col), _rescued_data={{"fraud_score":"0.95"}}
+
+# COMMAND ----------
+# Validate
+rescued = spark.sql(f"""
+    SELECT txn_id, _rescued_data
+    FROM   {FULL_SCHEMA}.bronze_rescued_demo
+    WHERE  _rescued_data IS NOT NULL
+    ORDER BY txn_id
+""").collect()
+
+print("📊 Rescued Data Validation:")
+for row in rescued:
+    print(f"  {row.txn_id}: {row._rescued_data}")
+
+assert len(rescued) == 3, f"Expected 3 rescued rows, got {len(rescued)}"
+assert any("T000021" in r.txn_id for r in rescued), "T000021 not rescued"
+assert any("T000022" in r.txn_id for r in rescued), "T000022 not rescued"
+assert any("T000023" in r.txn_id for r in rescued), "T000023 not rescued"
+print("\n✅ VALIDATION PASSED — 3 malformed rows captured in _rescued_data, 0 rows lost")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ### How the SDP pipeline quarantines these rows downstream
+# MAGIC ### How the SDP pipeline handles these downstream
 # MAGIC
-# MAGIC In the silver DLT pipeline, a single DQ expectation routes all rescued rows to quarantine
-# MAGIC automatically — **no custom error-handling code required**:
+# MAGIC In the silver DLT pipeline, a single DQ expectation routes rescued rows automatically:
 # MAGIC
-# MAGIC ```sql
-# MAGIC CONSTRAINT no_rescued_data
-# MAGIC   EXPECT (_rescued_data IS NULL)
-# MAGIC   ON VIOLATION QUARANTINE
+# MAGIC ```python
+# MAGIC @dp.expect("no_rescued_data", "_rescued_data IS NULL")  # ALLOW — passes through, flagged
 # MAGIC ```
 # MAGIC
 # MAGIC | Row | Fault | `_rescued_data` | Silver outcome |
 # MAGIC |---|---|---|---|
-# MAGIC | T000021 | `amount = "TWO HUNDRED"` | `{"amount": "TWO HUNDRED"}` | **quarantined** |
-# MAGIC | T000022 | `posting_date = "not-a-date"` | `{"posting_date": "not-a-date"}` | **quarantined** |
-# MAGIC | T000023 | extra column `fraud_score` | `{"fraud_score": "0.95"}` | **quarantined** |
-# MAGIC | T000001–T000020 | none | NULL | ✅ passes to silver |
+# MAGIC | T000021 | `amount = "TWO HUNDRED"` | `{"amount": "TWO HUNDRED"}` | flagged in DQ metrics |
+# MAGIC | T000022 | `posting_date = "not-a-date"` | `{"posting_date": "not-a-date"}` | flagged in DQ metrics |
+# MAGIC | T000023 | extra column `fraud_score` | `{"fraud_score": "0.95"}` | flagged in DQ metrics |
+# MAGIC | T000001–T000020 | none | NULL | ✅ clean pass |
 # MAGIC
 # MAGIC **Bronze never loses a row.** Malformed values are preserved as JSON in `_rescued_data`,
-# MAGIC giving the DQ team full visibility and the ability to reprocess once the source is fixed.
+# MAGIC giving the ops team full visibility and the ability to reprocess once the source is fixed.
 # MAGIC
-# MAGIC > **Presenter note:** This directly addresses DBX Bank's concern about data quality from
-# MAGIC > legacy Cards and GL systems. The SDP pattern gives ops teams a quarantine table they
-# MAGIC > can monitor and replay — without any custom error-handling code in the pipeline.
+# MAGIC > **Presenter note:** This addresses DBX Bank's concern about data quality from legacy
+# MAGIC > Cards and GL systems. No custom error-handling code required — the SDP pattern provides
+# MAGIC > a built-in quarantine with full audit trail.
