@@ -88,15 +88,15 @@ print(f"✅ Total rows now: {spark.table(f'{FULL_SCHEMA}.bronze_rescued_demo').c
 
 # COMMAND ----------
 display(spark.sql(f"""
-SELECT txn_id, amount, posting_date, status, fraud_score, _rescued_data
+SELECT txn_id, amount, posting_date, status, _rescued_data
 FROM   {FULL_SCHEMA}.bronze_rescued_demo
 WHERE  _rescued_data IS NOT NULL
 ORDER BY txn_id
 """))
 # Expected:
-# T000021: amount=NULL, _rescued_data={{"amount":"TWO HUNDRED"}}
-# T000022: posting_date=NULL, _rescued_data={{"posting_date":"not-a-date"}}
-# T000023: fraud_score=NULL (unknown col), _rescued_data={{"fraud_score":"0.95"}}
+# T000021: amount=NULL,         _rescued_data={{"amount":"TWO HUNDRED"}}
+# T000022: posting_date=NULL,   _rescued_data={{"posting_date":"not-a-date"}}
+# T000023: all cols populated,  _rescued_data={{"fraud_score":"0.95"}}  ← unknown col rescued
 
 # COMMAND ----------
 # Validate
