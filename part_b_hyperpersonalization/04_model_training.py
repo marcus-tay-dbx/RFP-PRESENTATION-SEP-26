@@ -54,9 +54,26 @@ le = LabelEncoder()
 # even if one class has 0 samples in the current training data.
 le.fit(LABEL_CLASSES)
 y = le.transform(pdf["next_best_product"])
+
+# Guard: XGBClassifier requires contiguous class indices 0…n-1.
+# If any class has 0 samples, add one synthetic row so training never fails.
+present = set(y)
+expected = set(range(len(LABEL_CLASSES)))
+missing_indices = expected - present
+if missing_indices:
+    for idx in sorted(missing_indices):
+        missing_cls = LABEL_CLASSES[idx]
+        print(f"⚠️  Class '{missing_cls}' (index {idx}) has 0 samples — adding 1 synthetic row")
+        synthetic_X = np.median(X, axis=0, keepdims=True)   # feature-median row
+        X = np.vstack([X, synthetic_X])
+        y = np.append(y, idx)
+        pdf = pd.concat([pdf, pdf.sample(1, random_state=42)
+                         .assign(next_best_product=missing_cls)], ignore_index=True)
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 print(f"Training: {len(X_train)} | Test: {len(X_test)}")
 print(f"Classes: {list(le.classes_)}")
+print(f"Class distribution: { {LABEL_CLASSES[i]: int((y==i).sum()) for i in range(len(LABEL_CLASSES))} }")
 
 # COMMAND ----------
 with mlflow.start_run(run_name="xgboost_recommendation_v1") as run:
