@@ -34,14 +34,18 @@
 # MAGIC | silver_digital_activity | channel | digital_channel events |
 
 # COMMAND ----------
-# MAGIC %run ../shared/config
+# DLT pipelines do not support %run — inline constants instead of shared/config
+CATALOG     = "fevm_master_classic_marcus_catalog"
+SCHEMA      = "rfp_presentation"
+FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
+VOLUME_DATA = f"/Volumes/{CATALOG}/{SCHEMA}/raw_data"
 
 # COMMAND ----------
 from pyspark import pipelines as dp
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-FULL = f"{CATALOG}.{SCHEMA}"
+FULL = FULL_SCHEMA
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PART 1 — BATCH BRONZE SOURCES (AutoLoader, triggered)

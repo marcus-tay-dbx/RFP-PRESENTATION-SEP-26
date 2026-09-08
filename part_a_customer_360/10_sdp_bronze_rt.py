@@ -15,7 +15,11 @@
 # MAGIC new files continuously so the record counter ticks up live during the demo.
 
 # COMMAND ----------
-# MAGIC %run ../shared/config
+# DLT pipelines do not support %run — inline constants instead of shared/config
+CATALOG     = "fevm_master_classic_marcus_catalog"
+SCHEMA      = "rfp_presentation"
+FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
+VOLUME_DATA = f"/Volumes/{CATALOG}/{SCHEMA}/raw_data"
 
 # COMMAND ----------
 from pyspark import pipelines as dp

@@ -19,9 +19,8 @@
 # MAGIC %run ../shared/config
 
 # COMMAND ----------
-import random, json, time, uuid
+import os, random, json, time, uuid
 from datetime import datetime, date, timedelta
-import dbutils
 
 # ── Pulse configuration ────────────────────────────────────────────────────────
 INTERVAL_DIGITAL = 10    # seconds between digital event batches
@@ -75,7 +74,7 @@ except Exception as e:
 
 # COMMAND ----------
 for subdir in ["streaming/digital_events", "streaming/credit_bureau", "streaming/telco_events"]:
-    dbutils.fs.mkdirs(f"{VOLUME_DATA}/{subdir}")
+    os.makedirs(f"{VOLUME_DATA}/{subdir}", exist_ok=True)
 print("✅ Streaming directories ready")
 
 # COMMAND ----------
@@ -83,9 +82,14 @@ print("✅ Streaming directories ready")
 
 # COMMAND ----------
 def _write_json_lines(records: list, path: str):
-    """Write a list of dicts as a JSON-lines file to a UC Volume path."""
-    lines = "\n".join(json.dumps(r) for r in records)
-    dbutils.fs.put(path, lines, overwrite=True)
+    """Write a list of dicts as a JSON-lines file to a UC Volume path.
+    Uses Python open() — UC Volumes are accessible as /Volumes/... on all compute types.
+    """
+    # Convert dbfs:/Volumes/... or /Volumes/... to local path
+    local = path.replace("dbfs:", "")
+    os.makedirs(os.path.dirname(local), exist_ok=True)
+    with open(local, "w") as f:
+        f.write("\n".join(json.dumps(r) for r in records))
 
 def _ts():
     return datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
@@ -193,9 +197,9 @@ def make_telco_events(n=8):
 # MAGIC %md ## Seed initial files (50 digital, 10 credit, 15 telco)
 
 # COMMAND ----------
-_write_json_lines(make_digital_events(50), f"{VOLUME_DATA}/streaming/digital_events/seed_{_ts()}.json")
+_write_json_lines(make_digital_events(50),        f"{VOLUME_DATA}/streaming/digital_events/seed_{_ts()}.json")
 _write_json_lines(make_credit_bureau_updates(10), f"{VOLUME_DATA}/streaming/credit_bureau/seed_{_ts()}.json")
-_write_json_lines(make_telco_events(15), f"{VOLUME_DATA}/streaming/telco_events/seed_{_ts()}.json")
+_write_json_lines(make_telco_events(15),          f"{VOLUME_DATA}/streaming/telco_events/seed_{_ts()}.json")
 print("✅ Seed data written — Pipeline 1 can now start")
 
 # COMMAND ----------
