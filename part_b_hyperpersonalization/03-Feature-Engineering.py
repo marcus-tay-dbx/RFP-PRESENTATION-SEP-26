@@ -232,7 +232,7 @@ fe.create_table(
         "Engineered from gold_customer_360. Primary key: party_id. "
         "Label: next_best_product (6 classes)."
     ),
-    tags={"domain": "retail_banking", "model": "product_recommendation"}
+
 )
 
 print(f"Feature table created: {da.feature_table}")
