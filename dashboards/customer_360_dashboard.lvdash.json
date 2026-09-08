@@ -1,0 +1,3581 @@
+{
+  "datasets": [
+    {
+      "name": "customer_360",
+      "displayName": "Customer 360",
+      "config": {
+        "version": "1.1",
+        "source": "fevm_master_classic_marcus_catalog.rfp_presentation.gold_customer_360",
+        "dimensions": [
+          {
+            "name": "party_id",
+            "expr": "party_id"
+          },
+          {
+            "name": "legal_name",
+            "expr": "legal_name",
+            "displayName": "Customer Name"
+          },
+          {
+            "name": "customer_segment",
+            "expr": "customer_segment",
+            "displayName": "Customer Segment"
+          },
+          {
+            "name": "lifestyle_segment",
+            "expr": "lifestyle_segment",
+            "displayName": "Lifestyle Segment"
+          },
+          {
+            "name": "gender",
+            "expr": "gender"
+          },
+          {
+            "name": "age",
+            "expr": "age"
+          },
+          {
+            "name": "age_band",
+            "expr": "CASE\n  WHEN age < 25 THEN 'Under 25'\n  WHEN age BETWEEN 25 AND 34 THEN '25-34'\n  WHEN age BETWEEN 35 AND 44 THEN '35-44'\n  WHEN age BETWEEN 45 AND 54 THEN '45-54'\n  WHEN age BETWEEN 55 AND 64 THEN '55-64'\n  ELSE '65+'\nEND",
+            "displayName": "Age Band"
+          },
+          {
+            "name": "marital_status",
+            "expr": "marital_status",
+            "displayName": "Marital Status"
+          },
+          {
+            "name": "education_level",
+            "expr": "education_level",
+            "displayName": "Education Level"
+          },
+          {
+            "name": "employment_status",
+            "expr": "employment_status",
+            "displayName": "Employment Status"
+          },
+          {
+            "name": "residency_status",
+            "expr": "residency_status",
+            "displayName": "Residency Status"
+          },
+          {
+            "name": "primary_state",
+            "expr": "primary_state",
+            "displayName": "State"
+          },
+          {
+            "name": "risk_rating",
+            "expr": "risk_rating",
+            "displayName": "Risk Rating"
+          },
+          {
+            "name": "kyc_status",
+            "expr": "kyc_status",
+            "displayName": "KYC Status"
+          },
+          {
+            "name": "lifecycle_status",
+            "expr": "lifecycle_status",
+            "displayName": "Lifecycle Status"
+          },
+          {
+            "name": "net_worth_band",
+            "expr": "net_worth_band",
+            "displayName": "Net Worth Band"
+          },
+          {
+            "name": "is_pep",
+            "expr": "CASE WHEN is_pep = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "PEP Status"
+          },
+          {
+            "name": "digital_banking_enrolled",
+            "expr": "CASE WHEN digital_banking_enrollment_flag = true THEN 'Enrolled' ELSE 'Not Enrolled' END",
+            "displayName": "Digital Banking"
+          },
+          {
+            "name": "mobile_app_user",
+            "expr": "CASE WHEN mobile_app_user_flag = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "Mobile App User"
+          },
+          {
+            "name": "has_credit_card",
+            "expr": "CASE WHEN owns_credit_card = 1 THEN 'Yes' ELSE 'No' END",
+            "displayName": "Has Credit Card"
+          },
+          {
+            "name": "has_home_loan",
+            "expr": "CASE WHEN owns_home_loan = 1 THEN 'Yes' ELSE 'No' END",
+            "displayName": "Has Home Loan"
+          },
+          {
+            "name": "has_personal_loan",
+            "expr": "CASE WHEN owns_personal_loan = 1 THEN 'Yes' ELSE 'No' END",
+            "displayName": "Has Personal Loan"
+          },
+          {
+            "name": "has_fixed_deposit",
+            "expr": "CASE WHEN has_fixed_deposit = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "Has Fixed Deposit"
+          },
+          {
+            "name": "ccris_status",
+            "expr": "ccris_status",
+            "displayName": "CCRIS Status"
+          },
+          {
+            "name": "bankruptcy_status",
+            "expr": "bankruptcy_status",
+            "displayName": "Bankruptcy Status"
+          },
+          {
+            "name": "payment_conduct_12m",
+            "expr": "payment_conduct_12m",
+            "displayName": "Payment Conduct (12M)"
+          },
+          {
+            "name": "preferred_contact_method",
+            "expr": "preferred_contact_method",
+            "displayName": "Preferred Contact"
+          },
+          {
+            "name": "is_shariah_preferred",
+            "expr": "CASE WHEN is_shariah_preferred = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "Shariah Preferred"
+          },
+          {
+            "name": "marketing_consent",
+            "expr": "CASE WHEN marketing_consent_flag = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "Marketing Consent"
+          },
+          {
+            "name": "relationship_tenure_years",
+            "expr": "relationship_tenure_years",
+            "displayName": "Tenure (Years)"
+          },
+          {
+            "name": "tenure_band",
+            "expr": "CASE\n  WHEN relationship_tenure_years < 2 THEN '< 2 years'\n  WHEN relationship_tenure_years BETWEEN 2 AND 5 THEN '2-5 years'\n  WHEN relationship_tenure_years BETWEEN 6 AND 10 THEN '6-10 years'\n  ELSE '10+ years'\nEND",
+            "displayName": "Tenure Band"
+          },
+          {
+            "name": "ctos_score",
+            "expr": "ctos_score",
+            "displayName": "CTOS Score"
+          },
+          {
+            "name": "ctos_band",
+            "expr": "CASE\n  WHEN ctos_score >= 750 THEN 'Excellent (750+)'\n  WHEN ctos_score >= 700 THEN 'Good (700-749)'\n  WHEN ctos_score >= 650 THEN 'Fair (650-699)'\n  WHEN ctos_score >= 600 THEN 'Poor (600-649)'\n  ELSE 'Very Poor (<600)'\nEND",
+            "displayName": "CTOS Band"
+          },
+          {
+            "name": "nps_score",
+            "expr": "nps_score",
+            "displayName": "NPS Score"
+          },
+          {
+            "name": "number_of_dependents",
+            "expr": "number_of_dependents",
+            "displayName": "Dependents"
+          },
+          {
+            "name": "digital_activity_score",
+            "expr": "digital_activity_score",
+            "displayName": "Digital Activity Score"
+          },
+          {
+            "name": "digital_maturity_score",
+            "expr": "digital_maturity_score",
+            "displayName": "Digital Maturity Score"
+          },
+          {
+            "name": "overseas_txn_flag",
+            "expr": "CASE WHEN overseas_txn_flag = true THEN 'Yes' ELSE 'No' END",
+            "displayName": "Overseas Transactions"
+          }
+        ],
+        "measures": [
+          {
+            "name": "Total Customers",
+            "expr": "COUNT(1)",
+            "displayName": "Total Customers",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              },
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "Avg Age",
+            "expr": "AVG(age)",
+            "displayName": "Average Age",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Total Deposit Balance",
+            "expr": "SUM(total_deposit_balance_myr)",
+            "displayName": "Total Deposits (MYR)",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              },
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "Total Loan Outstanding",
+            "expr": "SUM(total_loan_outstanding_myr)",
+            "displayName": "Total Loans Outstanding (MYR)",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              },
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "Avg Deposit Balance",
+            "expr": "AVG(total_deposit_balance_myr)",
+            "displayName": "Avg Deposit Balance",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              }
+            }
+          },
+          {
+            "name": "Avg Loan Outstanding",
+            "expr": "AVG(total_loan_outstanding_myr)",
+            "displayName": "Avg Loan Outstanding",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              }
+            }
+          },
+          {
+            "name": "Avg Annual Income",
+            "expr": "AVG(annual_income_amount)",
+            "displayName": "Avg Annual Income",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              }
+            }
+          },
+          {
+            "name": "Avg NPS",
+            "expr": "AVG(nps_score)",
+            "displayName": "Avg NPS Score",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Avg CTOS Score",
+            "expr": "AVG(ctos_score)",
+            "displayName": "Avg CTOS Score",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              }
+            }
+          },
+          {
+            "name": "Digital Enrollment Rate",
+            "expr": "AVG(CAST(digital_banking_enrollment_flag AS DOUBLE))",
+            "displayName": "Digital Enrollment Rate",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Mobile Adoption Rate",
+            "expr": "AVG(CAST(mobile_app_user_flag AS DOUBLE))",
+            "displayName": "Mobile Adoption Rate",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Avg Txn Count 30d",
+            "expr": "AVG(txn_count_30d)",
+            "displayName": "Avg Transactions (30d)",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Total Card Spend 30d",
+            "expr": "SUM(card_spend_30d_myr)",
+            "displayName": "Total Card Spend (30d)",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              },
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "Avg Products per Customer",
+            "expr": "AVG(num_accounts + num_loan_facilities)",
+            "displayName": "Avg Products per Customer",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Credit Card Penetration",
+            "expr": "AVG(CAST(owns_credit_card AS DOUBLE))",
+            "displayName": "Credit Card Penetration",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Home Loan Penetration",
+            "expr": "AVG(CAST(owns_home_loan AS DOUBLE))",
+            "displayName": "Home Loan Penetration",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Avg Digital Activity",
+            "expr": "AVG(digital_activity_score)",
+            "displayName": "Avg Digital Activity Score",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Avg Monthly Commitment",
+            "expr": "AVG(monthly_loan_commitment_myr)",
+            "displayName": "Avg Monthly Commitment",
+            "format": {
+              "type": "currency",
+              "currencyCode": "MYR",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 0.0
+              }
+            }
+          },
+          {
+            "name": "Shariah Preference Rate",
+            "expr": "AVG(CAST(is_shariah_preferred AS DOUBLE))",
+            "displayName": "Shariah Preference Rate",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          },
+          {
+            "name": "Avg Tenure",
+            "expr": "AVG(relationship_tenure_years)",
+            "displayName": "Avg Tenure (Years)",
+            "format": {
+              "type": "number",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 1.0
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "3f366e8c",
+      "displayName": "Executive Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# 🏦 Customer 360 Dashboard\n",
+                "Unified view of customer demographics, products, digital engagement, and credit risk"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Customers"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Customers)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_deposits",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Deposit Balance)",
+                      "expression": "MEASURE(`Total Deposit Balance`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Deposits"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Deposit Balance)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_loans",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Loan Outstanding)",
+                      "expression": "MEASURE(`Total Loan Outstanding`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Loans Outstanding"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Loan Outstanding)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_nps",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg NPS)",
+                      "expression": "MEASURE(`Avg NPS`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg NPS Score"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg NPS)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "segment_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Customers by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Customers)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Customers"
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "state_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "primary_state",
+                      "expression": "`primary_state`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Customers by State",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "primary_state",
+                  "displayName": "primary_state",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "primary_state",
+                  "displayName": "primary_state",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "networth_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "net_worth_band",
+                      "expression": "`net_worth_band`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Net Worth Distribution",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "net_worth_band",
+                  "displayName": "net_worth_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "net_worth_band",
+                  "displayName": "net_worth_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_digital",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Digital Enrollment Rate)",
+                      "expression": "MEASURE(`Digital Enrollment Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Digital Enrollment Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Digital Enrollment Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_products",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Products per Customer)",
+                      "expression": "MEASURE(`Avg Products per Customer`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Products per Customer"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Products per Customer)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_income",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Annual Income)",
+                      "expression": "MEASURE(`Avg Annual Income`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Annual Income"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Annual Income)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 9,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_tenure",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Tenure)",
+                      "expression": "MEASURE(`Avg Tenure`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Tenure"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Tenure)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 9,
+            "width": 3,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "demographics",
+      "displayName": "Demographics & Segmentation",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Demographics & Segmentation\n",
+                "Customer profile analysis across age, gender, education, and lifestyle dimensions"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "age_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "age_band",
+                      "expression": "`age_band`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Age Distribution",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "age_band",
+                  "displayName": "age_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "age_band",
+                  "displayName": "age_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "gender_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "gender",
+                      "expression": "`gender`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Gender Split",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Customers)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Customers"
+                },
+                "color": {
+                  "fieldName": "gender",
+                  "displayName": "gender",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "marital_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "marital_status",
+                      "expression": "`marital_status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Marital Status",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Customers)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Customers"
+                },
+                "color": {
+                  "fieldName": "marital_status",
+                  "displayName": "marital_status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 1,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "education_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "education_level",
+                      "expression": "`education_level`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Education Level",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "education_level",
+                  "displayName": "education_level",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "education_level",
+                  "displayName": "education_level",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "employment_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "employment_status",
+                      "expression": "`employment_status`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Employment Status",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "employment_status",
+                  "displayName": "employment_status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "employment_status",
+                  "displayName": "employment_status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 6,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "lifestyle_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "lifestyle_segment",
+                      "expression": "`lifestyle_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Lifestyle Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "lifestyle_segment",
+                  "displayName": "lifestyle_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "lifestyle_segment",
+                  "displayName": "lifestyle_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 6,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "tenure_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "tenure_band",
+                      "expression": "`tenure_band`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Tenure Distribution",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "tenure_band",
+                  "displayName": "tenure_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "tenure_band",
+                  "displayName": "tenure_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "shariah_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Shariah Preference by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 11,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "income_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Avg Annual Income)",
+                      "expression": "MEASURE(`Avg Annual Income`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Avg Income by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Avg Annual Income)",
+                  "displayName": "Avg Annual Income",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 11,
+            "width": 4,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "products",
+      "displayName": "Products & Balances",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Products & Balances\n",
+                "Product ownership, deposit & loan portfolio analysis across customer segments"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_cc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Credit Card Penetration)",
+                      "expression": "MEASURE(`Credit Card Penetration`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Credit Card Penetration"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Credit Card Penetration)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_hl",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Home Loan Penetration)",
+                      "expression": "MEASURE(`Home Loan Penetration`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Home Loan Penetration"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Home Loan Penetration)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_cardspend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Card Spend 30d)",
+                      "expression": "MEASURE(`Total Card Spend 30d`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Card Spend (30d)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Total Card Spend 30d)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_commitment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Monthly Commitment)",
+                      "expression": "MEASURE(`Avg Monthly Commitment`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Monthly Commitment"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Monthly Commitment)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "deposit_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Avg Deposit Balance)",
+                      "expression": "MEASURE(`Avg Deposit Balance`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Avg Deposit by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Avg Deposit Balance)",
+                  "displayName": "Avg Deposit Balance",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "loan_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Avg Loan Outstanding)",
+                      "expression": "MEASURE(`Avg Loan Outstanding`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Avg Loan Outstanding by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Avg Loan Outstanding)",
+                  "displayName": "Avg Loan Outstanding",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "product_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "measure(Avg Deposit Balance)",
+                      "expression": "MEASURE(`Avg Deposit Balance`)"
+                    },
+                    {
+                      "name": "measure(Avg Loan Outstanding)",
+                      "expression": "MEASURE(`Avg Loan Outstanding`)"
+                    },
+                    {
+                      "name": "measure(Credit Card Penetration)",
+                      "expression": "MEASURE(`Credit Card Penetration`)"
+                    },
+                    {
+                      "name": "measure(Home Loan Penetration)",
+                      "expression": "MEASURE(`Home Loan Penetration`)"
+                    },
+                    {
+                      "name": "measure(Avg Products per Customer)",
+                      "expression": "MEASURE(`Avg Products per Customer`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Product Ownership Summary"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "customer_segment"
+                  },
+                  {
+                    "fieldName": "measure(Total Customers)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Deposit Balance)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Loan Outstanding)"
+                  },
+                  {
+                    "fieldName": "measure(Credit Card Penetration)"
+                  },
+                  {
+                    "fieldName": "measure(Home Loan Penetration)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Products per Customer)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "deposit_state",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "primary_state",
+                      "expression": "`primary_state`"
+                    },
+                    {
+                      "name": "measure(Total Deposit Balance)",
+                      "expression": "MEASURE(`Total Deposit Balance`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Deposit Balance by State",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "primary_state",
+                  "displayName": "primary_state",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Deposit Balance)",
+                  "displayName": "Total Deposit Balance",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "primary_state",
+                  "displayName": "primary_state",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "digital",
+      "displayName": "Digital & Transactions",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Digital & Transactions\n",
+                "Digital banking adoption, channel engagement, and transaction activity analysis"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_enroll",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Digital Enrollment Rate)",
+                      "expression": "MEASURE(`Digital Enrollment Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Digital Enrollment Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Digital Enrollment Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_mobile",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Mobile Adoption Rate)",
+                      "expression": "MEASURE(`Mobile Adoption Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Mobile Adoption Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Mobile Adoption Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_activity",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Digital Activity)",
+                      "expression": "MEASURE(`Avg Digital Activity`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Digital Activity Score"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Digital Activity)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_txn",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Txn Count 30d)",
+                      "expression": "MEASURE(`Avg Txn Count 30d`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Transactions (30d)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Txn Count 30d)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "enroll_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Digital Enrollment by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "mobile_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Mobile App Usage by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "contact_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "preferred_contact_method",
+                      "expression": "`preferred_contact_method`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Preferred Contact Method",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Customers)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Customers"
+                },
+                "color": {
+                  "fieldName": "preferred_contact_method",
+                  "displayName": "preferred_contact_method",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "consent_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Marketing Consent by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 8,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "overseas_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Overseas Transactions by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 8,
+            "width": 4,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "credit_risk",
+      "displayName": "Credit & Risk",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Credit & Risk\n",
+                "Credit bureau scores, risk ratings, KYC compliance, and portfolio health indicators"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ctos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg CTOS Score)",
+                      "expression": "MEASURE(`Avg CTOS Score`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg CTOS Score"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg CTOS Score)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_shariah",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Shariah Preference Rate)",
+                      "expression": "MEASURE(`Shariah Preference Rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Shariah Preference Rate"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Shariah Preference Rate)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_nps2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg NPS)",
+                      "expression": "MEASURE(`Avg NPS`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg NPS Score"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg NPS)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_age",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Avg Age)",
+                      "expression": "MEASURE(`Avg Age`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Age"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Avg Age)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 1,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "risk_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "risk_rating",
+                      "expression": "`risk_rating`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Risk Rating Distribution",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "risk_rating",
+                  "displayName": "risk_rating",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "risk_rating",
+                  "displayName": "risk_rating",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "ctos_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "ctos_band",
+                      "expression": "`ctos_band`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "CTOS Score Bands",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "ctos_band",
+                  "displayName": "ctos_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "ctos_band",
+                  "displayName": "ctos_band",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 3,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "kyc_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "kyc_status",
+                      "expression": "`kyc_status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "KYC Status",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(Total Customers)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total Customers"
+                },
+                "color": {
+                  "fieldName": "kyc_status",
+                  "displayName": "kyc_status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 3,
+            "width": 4,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "ccris_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "CCRIS Status by Segment",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "customer_segment",
+                  "displayName": "customer_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "payment_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "payment_conduct_12m",
+                      "expression": "`payment_conduct_12m`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Payment Conduct (12M)",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "payment_conduct_12m",
+                  "displayName": "payment_conduct_12m",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(Total Customers)",
+                  "displayName": "Total Customers",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "payment_conduct_12m",
+                  "displayName": "payment_conduct_12m",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "risk_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "measure(Total Customers)",
+                      "expression": "MEASURE(`Total Customers`)"
+                    },
+                    {
+                      "name": "measure(Avg CTOS Score)",
+                      "expression": "MEASURE(`Avg CTOS Score`)"
+                    },
+                    {
+                      "name": "measure(Avg NPS)",
+                      "expression": "MEASURE(`Avg NPS`)"
+                    },
+                    {
+                      "name": "measure(Avg Deposit Balance)",
+                      "expression": "MEASURE(`Avg Deposit Balance`)"
+                    },
+                    {
+                      "name": "measure(Avg Loan Outstanding)",
+                      "expression": "MEASURE(`Avg Loan Outstanding`)"
+                    },
+                    {
+                      "name": "measure(Avg Tenure)",
+                      "expression": "MEASURE(`Avg Tenure`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Risk Profile by Segment"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "customer_segment"
+                  },
+                  {
+                    "fieldName": "measure(Total Customers)"
+                  },
+                  {
+                    "fieldName": "measure(Avg CTOS Score)"
+                  },
+                  {
+                    "fieldName": "measure(Avg NPS)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Deposit Balance)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Loan Outstanding)"
+                  },
+                  {
+                    "fieldName": "measure(Avg Tenure)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "global_filters",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter_segment",
+            "queries": [
+              {
+                "name": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_customer_segment",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "customer_segment",
+                      "expression": "`customer_segment`"
+                    },
+                    {
+                      "name": "customer_segment_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Customer Segment"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "customer_segment",
+                    "queryName": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_customer_segment"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_state",
+            "queries": [
+              {
+                "name": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_primary_state",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "primary_state",
+                      "expression": "`primary_state`"
+                    },
+                    {
+                      "name": "primary_state_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "State"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "primary_state",
+                    "queryName": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_primary_state"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_risk",
+            "queries": [
+              {
+                "name": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_risk_rating",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "risk_rating",
+                      "expression": "`risk_rating`"
+                    },
+                    {
+                      "name": "risk_rating_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Risk Rating"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "risk_rating",
+                    "queryName": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_risk_rating"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_lifestyle",
+            "queries": [
+              {
+                "name": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_lifestyle_segment",
+                "query": {
+                  "datasetName": "customer_360",
+                  "fields": [
+                    {
+                      "name": "lifestyle_segment",
+                      "expression": "`lifestyle_segment`"
+                    },
+                    {
+                      "name": "lifestyle_segment_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Lifestyle Segment"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "lifestyle_segment",
+                    "queryName": "dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6/datasets/01f1aba891c410459496d2036803f5d2_lifestyle_segment"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F0F3F7",
+        "dark": "#0D1B2A"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#1B2838"
+      },
+      "widgetBorderColor": {
+        "light": "#D6DEEA",
+        "dark": "#2A3A4E"
+      },
+      "selectionColor": {
+        "light": "#1B3A6B",
+        "dark": "#4A8FD4"
+      },
+      "visualizationColors": [
+        "#1B3A6B",
+        "#E31837",
+        "#4A8FD4",
+        "#8B1A2B",
+        "#6B9BD2",
+        "#C0392B",
+        "#2C5F8A",
+        "#F5A623",
+        "#1A5276",
+        "#D4A76A"
+      ],
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED",
+      "widgetPadding": 12,
+      "widgetMargin": 8,
+      "widgetCornerRadius": 8,
+      "widgetShadow": 15,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "DM Sans",
+          "fontColor": {
+            "light": "#1B3A6B",
+            "dark": "#E0E8F0"
+          }
+        },
+        "widgetTitle": {
+          "fontFamily": "DM Sans",
+          "fontColor": {
+            "light": "#1B3A6B",
+            "dark": "#E0E8F0"
+          },
+          "fontWeight": 600
+        },
+        "fieldTitle": {
+          "fontFamily": "DM Sans"
+        },
+        "fieldValue": {
+          "fontFamily": "DM Sans"
+        }
+      }
+    },
+    "applyModeEnabled": false
+  }
+}
