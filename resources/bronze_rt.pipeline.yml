@@ -4,6 +4,7 @@ resources:
       name: DBX-RT-Bronze
       serverless: true
       continuous: true          # always-on — picks up new files as they arrive
+      development: false        # production mode: pipeline stays RUNNING, auto-restarts on failure
       catalog: ${var.catalog}
       schema: ${var.schema}
       libraries:
@@ -14,4 +15,3 @@ resources:
         - notebook:
             path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/10_sdp_bronze_rt
       channel: CURRENT
-      development: true
