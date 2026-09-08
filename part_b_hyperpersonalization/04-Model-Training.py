@@ -82,12 +82,20 @@ missing  = expected - present
 if missing:
     for idx in sorted(missing):
         cls = DA.LABEL_CLASSES[idx]
-        print(f"WARNING: Class '{cls}' (index {idx}) has 0 samples — adding 1 synthetic row")
-        X = np.vstack([X, np.median(X, axis=0, keepdims=True)])
-        y = np.append(y, idx)
+        print(f"WARNING: Class '{cls}' (index {idx}) has 0 samples — adding 2 synthetic rows (stratify min=2)")
+        # Add 2 samples so stratified split can place 1 in each split
+        for _ in range(2):
+            X = np.vstack([X, np.median(X, axis=0, keepdims=True)])
+            y = np.append(y, idx)
+
+# Ensure all classes have >= 2 samples for stratified split
+class_min = min(int((y==i).sum()) for i in range(len(DA.LABEL_CLASSES)))
+use_stratify = class_min >= 2
+if not use_stratify:
+    print(f"WARNING: min class count={class_min}, disabling stratify")
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
+    X, y, test_size=0.2, random_state=42, stratify=y if use_stratify else None
 )
 print(f"Train: {len(X_train):,} | Test: {len(X_test):,}")
 print(f"Class distribution: { {DA.LABEL_CLASSES[i]: int((y==i).sum()) for i in range(len(DA.LABEL_CLASSES))} }")
