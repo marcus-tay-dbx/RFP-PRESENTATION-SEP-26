@@ -95,8 +95,6 @@ def bronze_digital_events():
             .option("cloudFiles.includeExistingFiles","true")
             .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
             .load(f"{VOLUME_DATA}/streaming/digital_events/")
-        .withColumn("_source_file",       input_file_name())
-        .withColumn("_ingest_timestamp",  current_timestamp())
     )
 
 # COMMAND ----------
@@ -127,8 +125,6 @@ def bronze_credit_bureau():
             .option("cloudFiles.includeExistingFiles","true")
             .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
             .load(f"{VOLUME_DATA}/streaming/credit_bureau/")
-        .withColumn("_source_file",       input_file_name())
-        .withColumn("_ingest_timestamp",  current_timestamp())
     )
 
 # COMMAND ----------
@@ -159,6 +155,4 @@ def bronze_telco_events():
             .option("cloudFiles.includeExistingFiles","true")
             .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
             .load(f"{VOLUME_DATA}/streaming/telco_events/")
-        .withColumn("_source_file",       input_file_name())
-        .withColumn("_ingest_timestamp",  current_timestamp())
     )

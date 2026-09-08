@@ -73,8 +73,6 @@ def bronze_customer_master():
             .option("cloudFiles.includeExistingFiles","true")
             .option("rescuedDataColumn",              "_rescued_data")
             .load(f"{VOLUME_DATA}/batch_v1/customer_master/")
-        .withColumn("_source_file",      input_file_name())
-        .withColumn("_ingest_timestamp", current_timestamp())
     )
 
 # COMMAND ----------
@@ -97,8 +95,6 @@ def bronze_core_banking_accounts():
             .option("cloudFiles.includeExistingFiles","true")
             .option("rescuedDataColumn",              "_rescued_data")
             .load(f"{VOLUME_DATA}/batch_v1/accounts/")
-        .withColumn("_source_file",      input_file_name())
-        .withColumn("_ingest_timestamp", current_timestamp())
     )
 
 # COMMAND ----------
@@ -121,8 +117,6 @@ def bronze_core_banking_txn():
             .option("cloudFiles.includeExistingFiles","true")
             .option("rescuedDataColumn",              "_rescued_data")
             .load(f"{VOLUME_DATA}/batch_v1/transactions/")
-        .withColumn("_source_file",      input_file_name())
-        .withColumn("_ingest_timestamp", current_timestamp())
     )
 
 # COMMAND ----------
@@ -145,8 +139,6 @@ def bronze_loans():
             .option("cloudFiles.includeExistingFiles","true")
             .option("rescuedDataColumn",              "_rescued_data")
             .load(f"{VOLUME_DATA}/batch_v1/loans/")
-        .withColumn("_source_file",      input_file_name())
-        .withColumn("_ingest_timestamp", current_timestamp())
     )
 
 # COMMAND ----------
@@ -169,8 +161,6 @@ def bronze_cards_txn():
             .option("cloudFiles.includeExistingFiles","true")
             .option("rescuedDataColumn",              "_rescued_data")
             .load(f"{VOLUME_DATA}/batch_v1/cards/")
-        .withColumn("_source_file",      input_file_name())
-        .withColumn("_ingest_timestamp", current_timestamp())
     )
 
 # ══════════════════════════════════════════════════════════════════════════════
