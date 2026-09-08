@@ -6,7 +6,7 @@
 # MAGIC %md
 # MAGIC # Schema Evolution Demo — Scenario 1: New Data Source Onboarding
 # MAGIC
-# MAGIC **Story:** ABMB launches a new digital initiative. The CRM exports a new customer file
+# MAGIC **Story:** DBX Bank launches a new digital initiative. The CRM exports a new customer file
 # MAGIC with 2 additional attributes. We show how AutoLoader handles this automatically —
 # MAGIC no pipeline downtime, no schema conflicts, new columns appear in the bronze table instantly.
 
@@ -115,6 +115,6 @@ ORDER BY _ingest_timestamp DESC LIMIT 20
 # MAGIC automatically, and backfilled `NULL` for all existing rows.
 # MAGIC **No manual ALTER TABLE. No pipeline restart. No data loss.**
 # MAGIC
-# MAGIC > **Presenter note:** This directly addresses ABMB's concern about frequent CRM schema
+# MAGIC > **Presenter note:** This directly addresses DBX Bank's concern about frequent CRM schema
 # MAGIC > changes breaking their overnight batch pipelines. The SDP pattern absorbs new attributes
 # MAGIC > without any engineering intervention.

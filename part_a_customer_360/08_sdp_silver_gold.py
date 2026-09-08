@@ -164,6 +164,10 @@ def gold_customer_360():
     kb   = spark.table(f"{FULL}.silver_kyc_compliance")
     da   = spark.read.table("_agg_digital")
 
+    # Safe column reference — column may not exist if bronze was ingested before schema evolution
+    shariah_col = (c["is_shariah_preferred"] if "is_shariah_preferred" in c.columns
+                   else lit(False)).alias("is_shariah_preferred")
+
     return (c
         .join(acct, c.party_id == acct.party_id, "left").drop(acct.party_id)
         .join(loan, c.party_id == loan.party_id, "left").drop(loan.party_id)
@@ -201,7 +205,7 @@ def gold_customer_360():
             c.marketing_consent_flag,
             c.net_worth_band,
             c.nps_score,
-            c.is_shariah_preferred,
+            shariah_col,
             c.preferred_language_code,
             c.preferred_contact_method,
             c.primary_state,
@@ -259,7 +263,7 @@ def gold_customer_360():
 # MAGIC ## Deploy
 # MAGIC
 # MAGIC 1. Pipelines → Create Pipeline
-# MAGIC 2. Name: `ABMB-Silver-Gold`
+# MAGIC 2. Name: `DBX-Silver-Gold`
 # MAGIC 3. Source: this notebook (`08_sdp_silver_gold.py`)
 # MAGIC 4. Target catalog: `fevm_master_classic_marcus_catalog`
 # MAGIC 5. Target schema: `abmb_rfp_presentation`

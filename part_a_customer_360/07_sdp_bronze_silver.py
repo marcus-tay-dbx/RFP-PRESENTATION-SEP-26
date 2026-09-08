@@ -5,7 +5,7 @@
 # MAGIC ## Enterprise Data Model Context
 # MAGIC These silver tables follow the **Databricks Banking Minimum Viable Model (MVM)** —
 # MAGIC a pre-built industry data model with **17 domains** and **227 tables** for banking.
-# MAGIC We populate **6 of the 17 domains** with data from Alliance Bank's source systems.
+# MAGIC We populate **6 of the 17 domains** with data from DBX Bank's source systems.
 # MAGIC
 # MAGIC | Silver Table | MVM Domain | MVM Entity |
 # MAGIC |---|---|---|
@@ -172,7 +172,7 @@ def silver_digital_activity():
 # MAGIC ## How to Deploy This Pipeline
 # MAGIC
 # MAGIC 1. Go to Databricks → Pipelines → Create Pipeline
-# MAGIC 2. Pipeline name: `ABMB-Bronze-Silver`
+# MAGIC 2. Pipeline name: `DBX-Bronze-Silver`
 # MAGIC 3. Source: select this notebook (`07_sdp_bronze_silver.py`)
 # MAGIC 4. Target catalog: `fevm_master_classic_marcus_catalog`
 # MAGIC 5. Target schema: `abmb_rfp_presentation`

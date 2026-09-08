@@ -1,0 +1,37 @@
+bundle:
+  name: abmb-rfp-presentation
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: fevm_master_classic_marcus_catalog
+    description: Unity Catalog name
+  schema:
+    default: abmb_rfp_presentation
+    description: Schema for all DBX Bank demo assets
+
+workspace:
+  host: https://fevm-fevm-master-classic-marcus.cloud.databricks.com
+  root_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation
+
+sync:
+  include:
+    - shared/**
+    - part_a_customer_360/**
+    - part_b_hyperpersonalization/**
+  exclude:
+    - "**/__pycache__/**"
+    - "**/.venv/**"
+    - part_a_customer_360/data/pdfs/**   # PDFs uploaded separately via CLI
+    - part_b_hyperpersonalization/app/frontend/node_modules/**
+    # dist/ is included so the app can serve the pre-built React frontend
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      catalog: fevm_master_classic_marcus_catalog
+      schema: abmb_rfp_presentation

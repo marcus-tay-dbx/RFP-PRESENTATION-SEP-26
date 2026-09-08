@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate 5 Alliance Bank product catalog PDFs. Run locally: python generate_pdfs.py"""
+"""Generate 5 DBX Bank product catalog PDFs. Run locally: python generate_pdfs.py"""
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import HexColor, white
@@ -52,7 +52,7 @@ def feature_table(rows, styles):
 PRODUCTS = [
     {
         "filename": "alliance_visa_platinum.pdf",
-        "name": "Alliance Bank Visa Platinum Credit Card",
+        "name": "DBX Bank Visa Platinum Credit Card",
         "code": "CC-VISA-PLAT-001", "category": "CREDIT CARD",
         "tagline": "Live more, earn more with every purchase",
         "features": [
@@ -122,7 +122,7 @@ PRODUCTS = [
         "tagline": "Own your dream home with flexible financing",
         "features": [
             ("Financing Type", "Conventional & Islamic-i (Tawarruq)"),
-            ("Base Rate", "Alliance Bank BR: 3.00% p.a."),
+            ("Base Rate", "DBX Bank BR: 3.00% p.a."),
             ("Spread Above BR", "+1.00% to +2.00% p.a."),
             ("Effective Rate", "From 4.00% p.a."),
             ("Max Financing Margin", "Up to 90% of property value"),
@@ -242,7 +242,7 @@ def generate_pdf(product, output_dir):
     story.append(HRFlowable(width="100%", thickness=1, color=RED))
     story.append(Spacer(1, 0.2*cm))
     story.append(Paragraph(
-        "Alliance Bank Malaysia Berhad (198201008390 / 112748-V). This brochure is for "
+        "DBX Bank Berhad (198201008390 / 112748-V). This brochure is for "
         "illustrative purposes only. Terms and conditions apply. Subject to credit assessment "
         "and approval. Rates and fees are effective as of the date shown above.",
         styles["SmallPrint"]))

@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # ABMB RFP Demo — Setup
+# MAGIC # DBX RFP Demo — Setup
 # MAGIC
 # MAGIC Creates the Unity Catalog schema, volumes, and directory structure for Part A.
 # MAGIC

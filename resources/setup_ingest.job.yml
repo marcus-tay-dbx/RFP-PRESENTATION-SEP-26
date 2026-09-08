@@ -1,0 +1,53 @@
+resources:
+  jobs:
+    abmb_setup_and_ingest:
+      name: DBX-Part-A-Setup-and-Ingest
+      description: "End-to-end Part A: setup → data gen → bronze ingest → Bronze-Silver-Gold pipeline"
+
+      tasks:
+        - task_key: setup
+          description: "Create schema, volumes, and directory structure"
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/00_setup
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: generate_data
+          description: "Generate 1,000 synthetic Malaysian banking customers and all source files"
+          depends_on:
+            - task_key: setup
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/01_data_generator
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: ingest_batch
+          description: "AutoLoader batch ingest 5 CSV sources into bronze tables"
+          depends_on:
+            - task_key: generate_data
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/02_ingest_batch
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: ingest_nearrt
+          description: "AutoLoader near-RT ingest credit bureau + telco JSON into bronze tables"
+          depends_on:
+            - task_key: generate_data
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_a_customer_360/03_ingest_nearrt
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: run_pipeline
+          description: "Single DLT pipeline: Bronze→Silver (SCD2) then Silver→Gold (gold_customer_360)"
+          depends_on:
+            - task_key: ingest_batch
+            - task_key: ingest_nearrt
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.abmb_pipeline.id}
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"

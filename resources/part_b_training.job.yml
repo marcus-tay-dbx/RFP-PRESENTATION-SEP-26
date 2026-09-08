@@ -1,0 +1,45 @@
+resources:
+  jobs:
+    abmb_part_b_training:
+      name: DBX-Part-B-Training-Pipeline
+      description: "Feature engineering → XGBoost training → endpoint deploy → batch inference"
+
+      tasks:
+        - task_key: feature_engineering
+          description: "Build customer_features table from gold_customer_360"
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_b_hyperpersonalization/03_feature_engineering
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+        - task_key: model_training
+          description: "Train XGBoost multi-class recommendation model, register @dev"
+          depends_on:
+            - task_key: feature_engineering
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_b_hyperpersonalization/04_model_training
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+        - task_key: realtime_endpoint
+          description: "Promote @dev → @champion and deploy serving endpoint"
+          depends_on:
+            - task_key: model_training
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_b_hyperpersonalization/06_realtime_inference
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+        - task_key: batch_inference
+          description: "Score all customers with @champion → gold_product_recommendations"
+          depends_on:
+            - task_key: realtime_endpoint
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/abmb-rfp-presentation/files/part_b_hyperpersonalization/05_batch_inference
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+      environments:
+        - environment_key: serverless_ml
+          spec:
+            client: "1"

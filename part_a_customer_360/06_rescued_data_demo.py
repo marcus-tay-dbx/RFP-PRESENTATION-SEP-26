@@ -119,6 +119,6 @@ WHERE _rescued_data IS NOT NULL
 # MAGIC **Bronze never loses a row.** Malformed values are preserved as JSON in `_rescued_data`,
 # MAGIC giving the DQ team full visibility and the ability to reprocess once the source is fixed.
 # MAGIC
-# MAGIC > **Presenter note:** This directly addresses ABMB's concern about data quality from
+# MAGIC > **Presenter note:** This directly addresses DBX Bank's concern about data quality from
 # MAGIC > legacy Cards and GL systems. The SDP pattern gives ops teams a quarantine table they
 # MAGIC > can monitor and replay — without any custom error-handling code in the pipeline.
