@@ -1,7 +1,12 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %run ../shared/config
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC # Schema Evolution Demo — New Data Source Onboarding
 # MAGIC
@@ -10,9 +15,11 @@
 # MAGIC no pipeline downtime, no schema conflicts, new columns appear in the bronze table instantly.
 
 # COMMAND ----------
+
 # MAGIC %md ## ⚙️ RESET — Run this cell first to start fresh
 
 # COMMAND ----------
+
 import os, shutil, pandas as pd, random
 from pyspark.sql.functions import current_timestamp, lit
 
@@ -27,9 +34,11 @@ os.makedirs(f"{VOLUME_DATA}/schema_evolution/v2", exist_ok=True)
 print("✅ Reset complete — ready for demo")
 
 # COMMAND ----------
+
 # MAGIC %md ## Act 1: Load V1 schema — baseline (4 columns)
 
 # COMMAND ----------
+
 v1_records = [{"cif_number": f"CIF{i:06d}", "legal_name": f"Customer {i}",
                "annual_income_amount": random.randint(24000, 200000),
                "risk_rating": random.choice(["low","medium","high"])}
@@ -39,6 +48,7 @@ df_v1.to_csv(f"{VOLUME_DATA}/schema_evolution/v1/customers_v1.csv", index=False)
 print(f"✅ Written {len(df_v1)} rows with {len(df_v1.columns)} columns to v1/")
 
 # COMMAND ----------
+
 # Ingest V1 with batch read — rescuedDataColumn captures any unexpected fields
 spark.read \
     .format("csv") \
@@ -55,9 +65,11 @@ print(f"✅ V1 loaded — {spark.table(f'{FULL_SCHEMA}.bronze_customers_evolutio
 display(spark.sql(f"DESCRIBE {FULL_SCHEMA}.bronze_customers_evolution"))
 
 # COMMAND ----------
+
 # MAGIC %md ## Act 2: New source onboarded — V2 adds `occupation_code` + `is_shariah_preferred`
 
 # COMMAND ----------
+
 v2_records = [{"cif_number": f"CIF{i:06d}", "legal_name": f"Customer {i}",
                "annual_income_amount": random.randint(24000, 200000),
                "risk_rating": random.choice(["low","medium","high"]),
@@ -69,6 +81,7 @@ df_v2.to_csv(f"{VOLUME_DATA}/schema_evolution/v2/customers_v2.csv", index=False)
 print(f"✅ Written {len(df_v2)} rows with {len(df_v2.columns)} columns to v2/ (2 NEW fields)")
 
 # COMMAND ----------
+
 # Same read pattern — mergeSchema handles new columns automatically, no code change!
 spark.read \
     .format("csv") \
@@ -84,9 +97,11 @@ spark.read \
 print("✅ V2 loaded with mergeSchema=true — new columns automatically added to existing table")
 
 # COMMAND ----------
+
 # MAGIC %md ## Act 3: Validate — new columns appear, V1 rows have NULL for new fields
 
 # COMMAND ----------
+
 total = spark.table(f"{FULL_SCHEMA}.bronze_customers_evolution").count()
 print(f"Total rows: {total}  (expected 150 = 100 V1 + 50 V2)")
 
@@ -94,11 +109,11 @@ display(spark.sql(f"""
 SELECT cif_number, annual_income_amount, occupation_code, is_shariah_preferred, _ingest_timestamp
 FROM   {FULL_SCHEMA}.bronze_customers_evolution
 ORDER BY cif_number
-LIMIT  20
 """))
 # Key insight: V1 rows (CIF000001–100) show NULL for the 2 new columns — graceful schema evolution
 
 # COMMAND ----------
+
 # Summary assertion
 v1_nulls = spark.sql(f"""
     SELECT COUNT(*) FROM {FULL_SCHEMA}.bronze_customers_evolution
@@ -114,6 +129,7 @@ assert v1_nulls == 100 and v2_populated == 50, "❌ Unexpected row counts!"
 print("\n✅ VALIDATION PASSED — schema evolved with zero downtime and no data loss")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### What just happened?
 # MAGIC

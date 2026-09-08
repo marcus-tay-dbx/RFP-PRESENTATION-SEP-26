@@ -50,7 +50,10 @@ LABEL_CLASSES = ["CREDIT_CARD","HOME_LOAN","INSURANCE","INVESTMENT","NO_ACTION",
 pdf = spark.table(FEATURE_TABLE).toPandas()
 X = pdf[FEATURES].values
 le = LabelEncoder()
-y = le.fit_transform(pdf["next_best_product"])
+# Fit on the full expected class list first so num_class is always 6,
+# even if one class has 0 samples in the current training data.
+le.fit(LABEL_CLASSES)
+y = le.transform(pdf["next_best_product"])
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 print(f"Training: {len(X_train)} | Test: {len(X_test)}")
 print(f"Classes: {list(le.classes_)}")
@@ -59,7 +62,7 @@ print(f"Classes: {list(le.classes_)}")
 with mlflow.start_run(run_name="xgboost_recommendation_v1") as run:
     params = {
         "objective":        "multi:softprob",
-        "num_class":        len(le.classes_),
+        "num_class":        len(LABEL_CLASSES),  # always 6 — hardcoded so model stays consistent
         "n_estimators":     300,
         "max_depth":        6,
         "learning_rate":    0.05,

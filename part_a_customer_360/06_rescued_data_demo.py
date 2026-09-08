@@ -1,7 +1,12 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %run ../shared/config
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC # Rescued Data Column Demo — Handling Malformed Values
 # MAGIC
@@ -15,9 +20,11 @@
 # MAGIC ```
 
 # COMMAND ----------
+
 # MAGIC %md ## ⚙️ RESET — Run first
 
 # COMMAND ----------
+
 import os, shutil, pandas as pd
 from pyspark.sql.functions import current_timestamp
 
@@ -29,9 +36,11 @@ os.makedirs(f"{VOLUME_DATA}/rescued_demo/malformed", exist_ok=True)
 print("✅ Reset complete")
 
 # COMMAND ----------
+
 # MAGIC %md ## Step 1: Clean ingestion baseline — all 20 rows pass, `_rescued_data` = NULL
 
 # COMMAND ----------
+
 clean_data = pd.DataFrame([
     {"txn_id": f"T{i:06d}", "amount": round(i * 100.50, 2),
      "posting_date": "2026-09-01", "status": "settled"}
@@ -56,6 +65,7 @@ print(f"   _rescued_data IS NOT NULL: {rescued_count}  ← should be 0")
 display(spark.sql(f"SELECT txn_id, amount, posting_date, status, _rescued_data FROM {FULL_SCHEMA}.bronze_rescued_demo"))
 
 # COMMAND ----------
+
 # MAGIC %md ## Step 2: Inject 3 malformed rows — each has a different data quality problem
 # MAGIC
 # MAGIC **Note on implementation:** In production, AutoLoader streaming rescues values automatically
@@ -64,6 +74,7 @@ display(spark.sql(f"SELECT txn_id, amount, posting_date, status, _rescued_data F
 # MAGIC bronze table would be in after AutoLoader processes malformed data.
 
 # COMMAND ----------
+
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType
 
 # These rows represent what AutoLoader produces after rescuing malformed fields:
@@ -84,9 +95,11 @@ rescued_rows.write.format("delta").mode("append") \
 print(f"✅ Total rows now: {spark.table(f'{FULL_SCHEMA}.bronze_rescued_demo').count()}  (expected 23)")
 
 # COMMAND ----------
+
 # MAGIC %md ## Step 3: Inspect rescued rows — malformed values captured as JSON, row preserved
 
 # COMMAND ----------
+
 display(spark.sql(f"""
 SELECT txn_id, amount, posting_date, status, _rescued_data
 FROM   {FULL_SCHEMA}.bronze_rescued_demo
@@ -99,6 +112,7 @@ ORDER BY txn_id
 # T000023: all cols populated,  _rescued_data={{"fraud_score":"0.95"}}  ← unknown col rescued
 
 # COMMAND ----------
+
 # Validate
 rescued = spark.sql(f"""
     SELECT txn_id, _rescued_data
@@ -118,6 +132,7 @@ assert any("T000023" in r.txn_id for r in rescued), "T000023 not rescued"
 print("\n✅ VALIDATION PASSED — 3 malformed rows captured in _rescued_data, 0 rows lost")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### How the SDP pipeline handles these downstream
 # MAGIC
