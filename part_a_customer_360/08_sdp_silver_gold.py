@@ -48,7 +48,7 @@ FULL = "fevm_master_classic_marcus_catalog.rfp_presentation"
 # COMMAND ----------
 @dp.materialized_view(name="_agg_accounts", comment="Account aggregates per customer")
 def _agg_accounts():
-    return (spark.table(f"{FULL}.silver_deposit_accounts")
+    return (spark.table("silver_deposit_accounts")
         .filter("__END_AT IS NULL")  # SCD2 current rows only
         .groupBy("party_id")
         .agg(
@@ -66,7 +66,7 @@ def _agg_accounts():
 # COMMAND ----------
 @dp.materialized_view(name="_agg_loans", comment="Loan aggregates per customer")
 def _agg_loans():
-    return (spark.table(f"{FULL}.silver_loan_accounts")
+    return (spark.table("silver_loan_accounts")
         .filter("__END_AT IS NULL")  # SCD2 current rows only
         .groupBy("party_id")
         .agg(
@@ -85,8 +85,8 @@ def _agg_loans():
 @dp.materialized_view(name="_agg_transactions", comment="Transaction behaviour aggregates per customer")
 def _agg_transactions():
     today = current_date()
-    txn   = spark.table(f"{FULL}.silver_transactions")
-    card  = spark.table(f"{FULL}.silver_card_transactions")
+    txn   = spark.table("silver_transactions")
+    card  = spark.table("silver_card_transactions")
 
     txn_agg = (txn.groupBy("party_id").agg(
         count(when(datediff(today, col("posting_date")) <= 30,  1)).alias("txn_count_30d"),
@@ -111,7 +111,7 @@ def _agg_transactions():
 # COMMAND ----------
 @dp.materialized_view(name="_agg_digital", comment="Digital + telco activity aggregates per customer")
 def _agg_digital():
-    da    = spark.table(f"{FULL}.silver_digital_activity")
+    da    = spark.table("silver_digital_activity")
     today = current_date()
 
     digital = (da.filter(col("source") == "digital_banking")
@@ -157,11 +157,11 @@ def _agg_digital():
     table_properties={"quality": "gold", "certified": "true"}
 )
 def gold_customer_360():
-    c    = spark.table(f"{FULL}.silver_customers").filter("__END_AT IS NULL")
+    c    = spark.table("silver_customers").filter("__END_AT IS NULL")
     acct = spark.read.table("_agg_accounts")
     loan = spark.read.table("_agg_loans")
     txn  = spark.read.table("_agg_transactions")
-    kb   = spark.table(f"{FULL}.silver_kyc_compliance")
+    kb   = spark.table("silver_kyc_compliance")
     da   = spark.read.table("_agg_digital")
 
     # Safe column reference — column may not exist if bronze was ingested before schema evolution
