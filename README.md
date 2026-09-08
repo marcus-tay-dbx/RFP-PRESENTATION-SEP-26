@@ -1,25 +1,97 @@
 # DBX Bank — Customer 360 + Hyperpersonalization Demo
 
-A Databricks end-to-end demo for a retail banking RFP. Part A builds a Customer 360 data lakehouse on the Databricks Banking Minimum Viable Model (MVM); Part B trains an XGBoost product-recommendation model and serves it through a real-time endpoint and a Databricks App.
+An end-to-end Databricks demo for a retail banking RFP, built on the **Databricks Banking Minimum Viable Model (MVM)**.
+
+**Part A** (morning session) demonstrates how to ingest, govern, and unify data from 6 core banking source systems into a certified Customer 360 gold table — covering batch EOD files, near-real-time credit bureau feeds, and live digital events.
+
+**Part B** (afternoon session) demonstrates the full AI/ML lifecycle on top of that Customer 360: XGBoost product-recommendation model, Model Serving endpoint with AI Gateway governance, batch inference, and a React app with AI-drafted personalised emails.
 
 ---
 
-## Architecture Overview
+## Demo Scenarios Addressed
+
+| Scenario | What is demonstrated |
+|---|---|
+| **Scenario 1 — New Source Onboarding** | CRM exports a new customer file with 2 extra columns. AutoLoader detects the schema change, adds columns automatically, zero downtime, full lineage in Unity Catalog → `05_schema_evolution_demo.py` |
+| **Scenario 2 — EOD Batch Ingest** | Core banking pushes nightly CSV extracts. AutoLoader ingests, DQ expectations enforce business rules, SCD Type 2 preserves full history, certified gold table published → `DBX-Customer-360-Pipeline` |
+
+---
+
+## Architecture
 
 ```
-Part A — Customer 360 (Data Lakehouse)
-  Synthetic data gen  →  AutoLoader bronze ingest  →  DLT pipeline (Bronze→Silver SCD2→Gold)
-  └─ gold_customer_360: unified view across 7 Banking MVM-conformed silver tables
-
-Part B — Hyperpersonalization (ML/AI)
-  gold_customer_360  →  Feature Store  →  XGBoost training  →  Model Serving endpoint
-                                       →  Batch scoring  →  gold_product_recommendations
-                                                         →  Databricks App (React UI)
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Part A — Customer 360 (Data Lakehouse)                                         │
+│                                                                                 │
+│  Source Systems          Bronze (8 tables)       Silver (7 tables)    Gold      │
+│  ─────────────────       ────────────────        ───────────────────  ───────   │
+│  Core Banking (T24) ──▶  bronze_customer_master                                 │
+│  IBM i/Db2 (EOD CSV) ──▶ bronze_core_banking_*  ──▶ silver_customers           │
+│  Loan Origination ──────▶ bronze_loans          ──▶ silver_deposit_accounts    │
+│  Cards System ─────────▶ bronze_cards_txn       ──▶ silver_loan_accounts       │
+│                                                  ──▶ silver_transactions        │
+│                                                  ──▶ silver_card_transactions   │
+│  CTOS/CCRIS API ───────▶ bronze_credit_bureau   ──▶ silver_kyc_compliance  ──▶ gold_customer_360
+│  Telco Partner ────────▶ bronze_telco_events    ──▶ silver_digital_activity    │
+│  Mobile/Web App ───────▶ bronze_digital_events  ──▶                            │
+│                            (real-time stream)                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  Part B — Hyperpersonalization (ML/AI)                                          │
+│                                                                                 │
+│  gold_customer_360 ──▶ Feature Store ──▶ XGBoost (multi:softprob, 6 classes)   │
+│                                      ──▶ Model Serving endpoint (real-time)     │
+│                                      ──▶ Batch inference ──▶ gold_product_recs  │
+│                                      ──▶ Databricks App (React + FastAPI)       │
+│                                              └─ GLM 5.2 email drafting          │
+│                                                 (Unity AI Gateway governed)     │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Part A** demonstrates the Databricks Lakehouse pattern for FSI: AutoLoader for batch and near-real-time ingestion, Spark Declarative Pipelines (DLT) with SCD Type 2 for governed silver tables, and a denormalised gold table as the single customer record.
+### Two-Pipeline Streaming Architecture
 
-**Part B** demonstrates the full ML lifecycle on top of that Customer 360: Databricks Feature Engineering, MLflow experiment tracking, Unity Catalog model registry with aliases (`@dev` → `@champion`), Model Serving with AI Gateway inference logging, and a React front-end served as a Databricks App.
+The Customer 360 pipeline is split into two DLT pipelines to balance cost and latency:
+
+| Pipeline | Mode | What it does |
+|---|---|---|
+| **`DBX-RT-Bronze`** | **Continuous** (always-on) | Ingests `bronze_digital_events` (real-time, ~10s), `bronze_credit_bureau` (near-RT micro-batch, ~60s), `bronze_telco_events` (near-RT, ~45s) |
+| **`DBX-Customer-360-Pipeline`** | **Triggered** (on-demand / daily) | Ingests batch CSV bronze sources inline; reads RT bronze from Pipeline 1; applies SCD2 → 7 silver tables → `gold_customer_360` |
+
+The **DBX-Events-Generator** job continuously writes synthetic events to UC Volumes, feeding Pipeline 1.
+
+---
+
+## Synthetic Data — 1,000 Malaysian Banking Customers
+
+All data is generated by `01_data_generator.py` using Python Faker with Malaysian-specific patterns.
+
+### Customer Profile Distribution
+
+| Dimension | Distribution |
+|---|---|
+| Segments | mass_market (40%), affluent (35%), high_net_worth (15%), private_banking (5%), premier (5%) |
+| Age | 22–65, mean 38 |
+| Income | RM 24,000 – RM 2,400,000 / year |
+| Shariah preference | ~40% (realistic for Malaysian Islamic banking market) |
+| Geography | Selangor (28%), KL (22%), Johor (12%), Penang (10%), others |
+| Employment | Full-time (60%), self-employed (20%), retired (10%), other (10%) |
+
+### Bronze Layer — 8 Source Tables
+
+| Bronze Table | Source System | Format | Latency | ~Rows |
+|---|---|---|---|---|
+| `bronze_customer_master` | Core Banking CIF (T24) | CSV | Batch daily | 1,000 |
+| `bronze_core_banking_accounts` | IBM i/Db2 — deposit accounts | CSV | Batch EOD | ~1,200 |
+| `bronze_loans` | Loan Origination System | CSV | Batch EOD | ~600 |
+| `bronze_core_banking_txn` | Transaction Engine | CSV | Batch EOD | ~50,000 |
+| `bronze_cards_txn` | Cards System | CSV | Batch EOD | ~10,000 |
+| `bronze_credit_bureau` | CTOS / CCRIS API | JSON | Near-RT ~60s | 1,000 |
+| `bronze_telco_events` | Telco Partner API | JSON | Near-RT ~45s | ~5,000 |
+| `bronze_digital_events` | Mobile app / web | JSON stream | Real-time ~10s | ongoing |
+
+All bronze tables use AutoLoader's `rescuedDataColumn` — any malformed field is captured as JSON in `_rescued_data` rather than dropping the row.
 
 ---
 
@@ -27,237 +99,295 @@ Part B — Hyperpersonalization (ML/AI)
 
 | Requirement | Notes |
 |---|---|
-| Databricks workspace | Serverless compute enabled |
-| Databricks CLI v0.200+ | `brew install databricks` or `pip install databricks-cli` |
-| Bundle auth | OAuth or PAT configured for the target workspace |
-| Unity Catalog | A catalog you own (default: `fevm_master_classic_marcus_catalog`) |
-
-Authenticate the CLI before running any bundle commands:
-
-```bash
-databricks auth login --host https://<your-workspace>.cloud.databricks.com
-```
+| Databricks workspace | Serverless compute enabled, Unity Catalog |
+| Databricks CLI v0.200+ | `brew install databricks` |
+| Bundle auth | `databricks auth login --host https://<workspace>.cloud.databricks.com` |
+| UC catalog | A catalog you own (default: `fevm_master_classic_marcus_catalog`) |
 
 ---
 
 ## Project Layout
 
 ```
-ABMB_RFP/
-├── databricks.yml                   # Bundle definition — catalog/schema variables, sync rules
+RFP-PRESENTATION-SEP-26/
+├── databricks.yml                       # Bundle definition — catalog/schema variables
 ├── shared/
-│   └── config.py                    # Central constants: CATALOG, SCHEMA, volume paths, model name
+│   └── config.py                        # CATALOG, SCHEMA, volume paths, model name
 ├── resources/
-│   ├── setup_ingest.job.yml         # Part A job definition (setup → ingest → DLT pipeline)
-│   ├── part_b_training.job.yml      # Part B job definition (feature eng → train → deploy → score)
-│   └── pipeline.yml                 # DLT pipeline definition (Bronze→Silver→Gold)
+│   ├── setup_ingest.job.yml             # Part A job (daily 01:00 AM KL schedule)
+│   ├── part_b_training.job.yml          # Part B job
+│   ├── pipeline.yml                     # DBX-Customer-360-Pipeline (triggered)
+│   ├── bronze_rt.pipeline.yml           # DBX-RT-Bronze (continuous)
+│   └── events_generator.job.yml         # Streaming event generator
 ├── part_a_customer_360/
-│   ├── 00_setup.py                  # Create UC schema, volumes, directory structure
-│   ├── 01_data_generator.py         # Generate 1,000 synthetic Malaysian banking customers
-│   ├── 02_ingest_batch.py           # AutoLoader batch ingest — 5 CSV sources → bronze tables
-│   ├── 03_ingest_nearrt.py          # AutoLoader near-RT ingest — credit bureau + telco JSON
-│   ├── 04_ingest_realtime.py        # Realtime ingest demonstration
-│   ├── 05_schema_evolution_demo.py  # Schema evolution with AutoLoader rescuedDataColumn
-│   ├── 06_rescued_data_demo.py      # Rescued data column demo
-│   ├── 07_sdp_bronze_silver.py      # DLT: Bronze → 7 Silver tables (SCD Type 2)
-│   ├── 08_sdp_silver_gold.py        # DLT: Silver → gold_customer_360
-│   ├── 09_pdf_pipeline.py           # Unstructured PDF ingestion pipeline
-│   └── data/                        # Local sample data files
-└── part_b_hyperpersonalization/
-    ├── 00_setup.py                  # Part B setup — Lakebase project, feature store init
-    ├── 01_overview.py               # Demo narrative and architecture walkthrough
-    ├── 02_eda.py                    # Exploratory data analysis on gold_customer_360
-    ├── 03_feature_engineering.py    # Build customer_features table; sync to Lakebase
-    ├── 04_model_training.py         # XGBoost multi-class training, MLflow logging, @dev alias
-    ├── 05_batch_inference.py        # Score all customers → gold_product_recommendations
-    ├── 06_realtime_inference.py     # Promote @dev → @champion; deploy Model Serving endpoint
-    ├── 07_observability.py          # Inference logging, drift monitoring, AI Gateway metrics
-    ├── 08_mlflow_deploy.py          # MLflow deployment utilities
-    ├── 09_unity_ai_gateway.py       # AI Gateway configuration and rate limiting
-    └── app/                         # Databricks App (FastAPI backend + React frontend)
-        ├── app.py                   # FastAPI routes — calls serving endpoint, reads recommendations
-        ├── app.yaml                 # Databricks App manifest
-        ├── requirements.txt         # Python dependencies
-        └── frontend/                # React UI (pre-built dist/ included for deployment)
+│   ├── 00_setup.py                      # Create schema, volumes, streaming directories
+│   ├── 01_data_generator.py             # 1,000 synthetic Malaysian banking customers
+│   ├── 02_ingest_batch.py               # AutoLoader batch — 5 CSV sources → bronze (demo)
+│   ├── 03_ingest_nearrt.py              # AutoLoader near-RT — credit bureau + telco (demo)
+│   ├── 04_ingest_realtime.py            # Real-time streaming demo
+│   ├── 05_schema_evolution_demo.py      # Schema drift: V1 (4 cols) → V2 (6 cols), no downtime
+│   ├── 06_rescued_data_demo.py          # Malformed data captured in _rescued_data
+│   ├── 07_sdp_bronze_silver.py          # Pipeline 2 notebook: batch bronze + 7 silver SCD2 tables
+│   ├── 08_sdp_silver_gold.py            # Pipeline 2 notebook: silver → gold_customer_360
+│   ├── 09_pdf_pipeline.py               # ai_parse_document + ai_extract: product catalog PDFs
+│   ├── 10_sdp_bronze_rt.py              # Pipeline 1 notebook: RT + near-RT bronze streaming tables
+│   ├── 11_events_generator.py           # Continuous event writer (digital/credit/telco)
+│   └── 12_dirty_data_injector.py        # Injects ~5% malformed transactions (DQ demo)
+├── part_b_hyperpersonalization/
+│   ├── 00_setup.py                      # Lakebase project init, feature store schema
+│   ├── 01_overview.py                   # Architecture walkthrough
+│   ├── 02_eda.py                        # Exploratory analysis on gold_customer_360
+│   ├── 03_feature_engineering.py        # Build customer_features; sync to Lakebase Postgres
+│   ├── 04_model_training.py             # XGBoost multi:softprob, MLflow, @dev alias
+│   ├── 05_batch_inference.py            # Score all customers → gold_product_recommendations
+│   ├── 06_realtime_inference.py         # @dev → @champion; deploy Model Serving endpoint
+│   ├── 07_observability.py              # Inference logs, drift, AI Gateway telemetry
+│   ├── 08_mlflow_deploy.py              # MLflow deployment helpers
+│   ├── 09_unity_ai_gateway.py           # AI Gateway: rate limits, guardrails, traffic split
+│   └── app/                             # Databricks App (FastAPI + React)
+│       ├── app.py                       # GET /customer, POST /recommend, POST /draft-email
+│       ├── app.yaml
+│       └── frontend/                    # React UI — two templates (see Part B section)
+├── dashboards/
+│   └── customer_360_dashboard.lvdash.json   # AI/BI Lakeview dashboard (import via UI)
+└── lakeflow/
+    └── product_parsing_lakeflow_designer.designer.ipynb  # Lakeflow Connect PDF pipeline
 ```
 
 ---
 
 ## Part A — Customer 360 Pipeline
 
-### What It Does
-
-1. **Setup** — creates the Unity Catalog schema, two UC Volumes (`raw_data`, `product_pdfs`), and the directory tree that AutoLoader monitors.
-2. **Data Generation** — generates 1,000 synthetic Malaysian retail banking customers with realistic profiles: CIF records, deposit/loan accounts, transaction history, credit bureau scores (CTOS/CCRIS), and mobile app events.
-3. **Bronze Ingest** — AutoLoader ingests five CSV source feeds (customer master, accounts, loans, transactions, cards) into append-only bronze Delta tables. A parallel near-RT job ingests credit bureau and telco JSON.
-4. **Bronze → Silver (DLT)** — a Spark Declarative Pipeline (DLT) applies SCD Type 2 CDC via `apply_changes` to produce seven Banking MVM-conformed silver tables.
-5. **Silver → Gold (DLT)** — the same DLT pipeline joins and aggregates the silver tables into `gold_customer_360`, the unified customer record used by Part B.
-
 ### Notebooks
 
 | Notebook | What It Does |
 |---|---|
-| `00_setup.py` | Create UC schema (`rfp_presentation`), volumes (`raw_data`, `product_pdfs`), and volume subdirectories |
-| `01_data_generator.py` | Generate 1,000 synthetic customer records across all source-system feeds and write CSVs/JSON to the raw_data volume |
-| `02_ingest_batch.py` | AutoLoader batch ingest of 5 CSV feeds into bronze Delta tables with `rescuedDataColumn` |
-| `03_ingest_nearrt.py` | AutoLoader near-real-time ingest of credit bureau (CTOS/CCRIS) and telco event JSON using `trigger(availableNow=True)` |
-| `04_ingest_realtime.py` | Continuous streaming ingest demonstration |
-| `05_schema_evolution_demo.py` | Add a new column to the v2 customer feed; show AutoLoader schema evolution with `mergeSchema` |
-| `06_rescued_data_demo.py` | Inject a malformed record; show `_rescued_data` column capturing it without pipeline failure |
-| `07_sdp_bronze_silver.py` | DLT notebook: seven `create_streaming_table` + `create_auto_cdc_flow` definitions for SCD Type 2 silver tables |
-| `08_sdp_silver_gold.py` | DLT notebook: join silver tables → materialised `gold_customer_360` view with 40+ features |
-| `09_pdf_pipeline.py` | Ingest product PDF brochures into a vector index for AI-powered product Q&A |
+| `00_setup.py` | Create UC schema, volumes, and all directory structure including `streaming/` |
+| `01_data_generator.py` | Generate 1,000 customers: CIF records, accounts, loans, ~50K transactions, cards, credit bureau JSON, telco events, digital events. Injects ~5% dirty transactions for the DQ demo |
+| `02_ingest_batch.py` | *(Demo notebook)* AutoLoader batch: 5 CSV feeds → bronze tables, `rescuedDataColumn` enabled |
+| `03_ingest_nearrt.py` | *(Demo notebook)* AutoLoader micro-batch: credit bureau + telco JSON → bronze |
+| `04_ingest_realtime.py` | *(Demo notebook)* Real-time streaming demonstration |
+| `05_schema_evolution_demo.py` | **Repeatable demo.** V1 (4-col CSV) → V2 (6-col CSV). Shows `mergeSchema` adding columns with zero downtime; V1 rows get NULL for new fields |
+| `06_rescued_data_demo.py` | **Repeatable demo.** Injects 3 malformed rows (string→DOUBLE, invalid date, unknown column). Shows `_rescued_data` capturing faults as JSON, rows preserved |
+| `07_sdp_bronze_silver.py` | DLT Pipeline 2: AutoLoader batch bronze sources (inline) + 7 silver SCD2 tables. Reads RT bronze from Pipeline 1 via UC |
+| `08_sdp_silver_gold.py` | DLT Pipeline 2: joins 7 silver tables → `gold_customer_360` (~60 features per customer) |
+| `09_pdf_pipeline.py` | `ai_parse_document` → `ai_classify` → `ai_extract` (34-field schema) on 5 product PDFs |
+| `10_sdp_bronze_rt.py` | DLT Pipeline 1 (continuous): 3 streaming bronze tables at different latencies |
+| `11_events_generator.py` | Loops writing digital events (10s), credit bureau (60s), telco (45s) to UC Volumes |
+| `12_dirty_data_injector.py` | One-off: writes 2,400 dirty transactions to trigger DQ expectations in the pipeline UI |
 
 ### How to Run
 
-Deploy the bundle and run the end-to-end Part A job with one command:
-
 ```bash
-# Deploy notebooks and resources to the workspace
+# 1. Deploy to workspace
 databricks bundle deploy
 
-# Run Part A: setup → data gen → batch ingest + near-RT ingest → DLT pipeline
+# 2. Start the RT streaming pipeline (stays running continuously)
+databricks bundle run dbx_bronze_rt
+
+# 3. Start the event generator (feeds the RT pipeline)
+databricks bundle run dbx_events_generator
+
+# 4. Run Part A end-to-end (setup → data gen → DLT pipeline)
 databricks bundle run dbx_setup_and_ingest
 ```
 
-This single job runs the full sequence: `setup` → `generate_data` → (`ingest_batch` ∥ `ingest_nearrt`) → `run_pipeline` (DLT).
+The `dbx_setup_and_ingest` job is also **scheduled daily at 01:00 AM Kuala Lumpur time**.
 
-### Data Model
+### Data Model — Banking MVM
 
-The pipeline populates **6 of the 17 Banking MVM domains**:
+The pipeline populates **6 of the 17 Banking MVM domains** (Databricks' published FSI industry data model — 17 domains, 227 tables):
 
-| Silver Table | MVM Domain | Source System |
-|---|---|---|
-| `silver_customers` | customer | Core Banking (CIF) — party + individual_profile |
-| `silver_deposit_accounts` | account | Core Banking (CBS) — deposit_account |
-| `silver_loan_accounts` | loan | Loan Origination System — loan_account |
-| `silver_transactions` | payment | Transaction Engine — payment_transaction |
-| `silver_card_transactions` | payment | Transaction Engine — payment_instruction (card) |
-| `silver_kyc_compliance` | compliance | CTOS / CCRIS credit bureau — kyc_review |
-| `silver_digital_activity` | channel | Mobile app + telco — digital_channel events |
+| Silver Table | MVM Domain | MVM Entity | Key Fields |
+|---|---|---|---|
+| `silver_customers` | customer | party + individual_profile | 45 fields incl. IC format, segment, KYC status |
+| `silver_deposit_accounts` | account | deposit_account | 30 fields incl. account type, balance, IBAN |
+| `silver_loan_accounts` | loan | loan_account | 20 fields incl. ECL stage (MFRS 9), arrears |
+| `silver_transactions` | payment | payment_transaction | 22 fields incl. rail (FPX/IBG/DuitNow), sanctions |
+| `silver_card_transactions` | payment | payment_instruction (card) | 21 fields incl. overseas, contactless, disputes |
+| `silver_kyc_compliance` | compliance | kyc_review + CTOS/CCRIS ext. | 32 fields incl. CTOS score 300–850, CCRIS status |
+| `silver_digital_activity` | channel | digital_channel events | RT + telco union: session, ARPU, churn risk |
 
-All seven tables use **SCD Type 2** — full history is preserved automatically by DLT's `apply_changes`. The gold layer joins them into `gold_customer_360`.
+All SCD Type 2 — full history preserved automatically by DLT `apply_changes`.
+
+### Data Quality Expectations
+
+The DLT pipeline enforces business rules at the silver layer. With the `12_dirty_data_injector.py` data, you will see non-zero failure rates in the pipeline UI:
+
+| Expectation | Table | Action | What triggers it |
+|---|---|---|---|
+| `valid_txn_id` | silver_transactions | **DROP** | NULL `payment_transaction_id` |
+| `positive_amount` | silver_transactions | **DROP** | Negative `payment_amount` |
+| `valid_currency` | silver_transactions | Allow (flagged) | Currency outside MYR/USD/SGD/EUR/GBP |
+| `valid_status` | silver_transactions | Allow (flagged) | Status = FROZEN, FRAUD_HOLD |
+| `valid_rail` | silver_transactions | Allow (flagged) | Rail = CRYPTO, CBDC |
+| `posting_after_value` | silver_transactions | Allow (flagged) | `posting_date` before `value_date` |
+| `valid_ctos_score` | silver_kyc_compliance | Allow (flagged) | CTOS score outside 300–850 |
+| `no_rescued_data` | all silver tables | Allow (flagged) | `_rescued_data IS NOT NULL` |
 
 ---
 
-## Part B — Hyperpersonalization Pipeline
+## Part B — Hyperpersonalization
 
 ### What It Does
 
-1. **Feature Engineering** — reads `gold_customer_360`, derives label assignments (next-best product per customer), builds a `customer_features` Delta table, and registers it with Databricks Feature Engineering. Features are synced to a Lakebase Postgres instance for sub-10ms lookup at serve time.
-2. **Model Training** — trains an XGBoost multi-class classifier (`multi:softprob`) to predict `next_best_product` across 6 product classes. Logs parameters, metrics, SHAP feature importances, and a confusion matrix to MLflow. Registers the model to Unity Catalog and sets the `@dev` alias.
-3. **Endpoint Deployment** — promotes `@dev` to `@champion`, then creates a Model Serving endpoint backed by Lakebase for real-time feature lookup. AI Gateway inference logging is enabled.
-4. **Batch Scoring** — scores all 1,000 customers using the `@champion` model and writes ranked product recommendations to `gold_product_recommendations`.
-5. **Databricks App** — a FastAPI + React application reads recommendations and calls the serving endpoint live, giving a demo-ready UI for the hyperpersonalization story.
+Given a customer's full 360 profile, predict which 1–2 banking products they are most likely to adopt next. Output: top-2 product recommendations with confidence scores, plus AI-drafted personalised emails.
 
 ### Notebooks
 
 | Notebook | What It Does |
 |---|---|
-| `00_setup.py` | Create Lakebase project (`DBX-RFP-PRESENTATION`), initialise feature store schema |
-| `01_overview.py` | Architecture walkthrough and demo narrative markdown |
-| `02_eda.py` | Exploratory analysis: product ownership rates, income distribution, CTOS score bands |
-| `03_feature_engineering.py` | Derive label column; build `customer_features` feature table; sync to Lakebase |
-| `04_model_training.py` | XGBoost `multi:softprob` training; MLflow logging; register `@dev` to UC model registry |
-| `05_batch_inference.py` | Batch score all customers using `@champion`; write `gold_product_recommendations` |
-| `06_realtime_inference.py` | Promote `@dev` → `@champion`; deploy Model Serving endpoint with AI Gateway |
-| `07_observability.py` | Query inference logs; compute drift metrics; display AI Gateway request volume |
-| `08_mlflow_deploy.py` | MLflow deployment helpers and model validation utilities |
-| `09_unity_ai_gateway.py` | Configure AI Gateway rate limits and usage policies on the serving endpoint |
-| `app/` | Databricks App: FastAPI backend + React frontend for live demo |
+| `00_setup.py` | Lakebase project init, feature store schema setup |
+| `01_overview.py` | Architecture walkthrough and business context |
+| `02_eda.py` | EDA on `gold_customer_360`: segment distribution, CTOS bands, product ownership |
+| `03_feature_engineering.py` | Derive `next_best_product` label; build `customer_features` table; sync to Lakebase Postgres for sub-10ms real-time lookup |
+| `04_model_training.py` | XGBoost `multi:softprob`; MLflow logging (params, F1, SHAP); register `@dev` alias |
+| `05_batch_inference.py` | Load `@champion` model; `predict_proba` on all 1,000 customers; write `gold_product_recommendations` |
+| `06_realtime_inference.py` | Promote `@dev` → `@champion`; deploy Model Serving endpoint with AI Gateway inference logging |
+| `07_observability.py` | Query inference logs, drift metrics, AI Gateway request volume |
+| `08_mlflow_deploy.py` | MLflow deployment helpers and model validation |
+| `09_unity_ai_gateway.py` | Rate limits (100 req/min/user), banking guardrails (no PII, no specific financial advice), 70/30 traffic split (GLM 5.2 quality / GLM 5.3 Flash speed) |
+| `app/` | FastAPI backend + React frontend |
 
 ### How to Run
 
 ```bash
-# Run Part B: feature engineering → model training → endpoint deploy → batch inference
+# Run Part B (requires Part A gold_customer_360 to exist)
 databricks bundle run dbx_part_b_training
 ```
 
-Job task sequence: `feature_engineering` → `model_training` → `realtime_endpoint` → `batch_inference`.
+Task sequence: `feature_engineering` → `model_training` → `realtime_endpoint` → `batch_inference`
 
-> **Note:** Part A must complete successfully before running Part B — the feature engineering notebook reads from `gold_customer_360`.
-
-### ML Model Details
+### ML Model
 
 | Property | Value |
 |---|---|
-| Algorithm | XGBoost (`multi:softprob`) |
-| Target | `next_best_product` — 6 classes |
-| Classes | `CREDIT_CARD`, `HOME_LOAN`, `PERSONAL_LOAN`, `UNIT_TRUST`, `FIXED_DEPOSIT`, `INSURANCE` |
-| Primary metric | Macro F1-score |
-| Explainability | SHAP feature importance values logged to MLflow |
-| Feature source | `customer_features` Delta table (Feature Engineering client) |
-| Real-time lookup | Lakebase Postgres (synced from `customer_features`) |
-| Model registry | Unity Catalog — aliases `@dev`, `@champion` |
+| Algorithm | XGBoost (`multi:softprob`, always 6 classes) |
+| Target | `next_best_product` |
+| Classes | `CREDIT_CARD`, `HOME_LOAN`, `PERSONAL_LOAN`, `INVESTMENT`, `INSURANCE`, `NO_ACTION` |
+| Label strategy | Rule-based from customer profile: CTOS score, income, existing products, debt-to-income |
+| Feature count | 20 features (tenure, balance, CTOS, CCRIS, income, digital score, telco ARPU, …) |
+| Metric | Macro F1-score (balanced across 6 classes) |
+| Explainability | SHAP feature importance logged to MLflow |
+| Feature lookup | `customer_features` table → Lakebase Postgres synced for real-time serving |
+| Registry | Unity Catalog — aliases `@dev` → `@champion` |
+
+### Label Generation Logic
+
+```
+CREDIT_CARD   → CTOS > 700, income > 60K, no existing card
+HOME_LOAN     → Age 28–45, married, 1+ dependents, no home loan, income > 48K
+PERSONAL_LOAN → monthly_commitment/income > 0.2 (debt consolidation signal)
+INVESTMENT    → net_worth_band in [500K–1M, 1M–5M], no investment product
+INSURANCE     → has hire purchase, no motor insurance
+NO_ACTION     → all other customers
+```
+
+### Databricks App — Two UI Templates
+
+**Template A: Banker's Workstation**
+- Left sidebar: customer search + recent customers
+- Main tabs: Profile | Accounts | Transactions | Credit | Digital Behaviour
+- Right rail: top-2 product recommendations + AI email draft button
+
+**Template B: Intelligence Hub**
+- Hero card: segment badge, NPS ring, tenure years
+- KPI tiles: Total Balance | CTOS Score | Tenure | Digital Maturity
+- Split view: activity timeline (left) + recommendation carousel (right)
+- AI Panel: "Draft personalised email" → GLM 5.2 writes 150-word email in preferred language
+
+**Email prompt:** Calls GLM 5.2 via Unity AI Gateway. Guardrails block specific financial advice and PII in responses. Every call is logged to `system.ai_gateway.usage` for compliance audit.
 
 ---
 
 ## Databricks Assets
 
-All assets land in the configured catalog and schema (defaults below).
-
-| Asset | Full Name | Type |
+| Asset | Name | Type |
 |---|---|---|
 | UC schema | `fevm_master_classic_marcus_catalog.rfp_presentation` | Schema |
 | Raw data volume | `.../rfp_presentation.raw_data` | UC Volume |
 | Product PDFs volume | `.../rfp_presentation.product_pdfs` | UC Volume |
+| Bronze tables (×8) | `bronze_customer_master`, `bronze_core_banking_accounts`, `bronze_loans`, `bronze_core_banking_txn`, `bronze_cards_txn`, `bronze_credit_bureau`, `bronze_telco_events`, `bronze_digital_events` | Delta Streaming Tables |
 | Silver tables (×7) | `silver_customers`, `silver_deposit_accounts`, `silver_loan_accounts`, `silver_transactions`, `silver_card_transactions`, `silver_kyc_compliance`, `silver_digital_activity` | Delta (SCD2) |
-| Gold Customer 360 | `gold_customer_360` | Delta (materialised) |
+| Gold Customer 360 | `gold_customer_360` | Delta Materialised View |
 | Feature table | `customer_features` | Delta + Feature Store |
 | Gold recommendations | `gold_product_recommendations` | Delta |
 | ML model | `product_recommendation_model` | UC Registered Model |
-| DLT pipeline | `DBX-Customer-360-Pipeline` | Serverless DLT pipeline |
+| RT Bronze pipeline | `DBX-RT-Bronze` | Continuous DLT |
+| Customer 360 pipeline | `DBX-Customer-360-Pipeline` | Triggered DLT |
 | Serving endpoint | `dbx-product-recommendation-<username>` | Model Serving |
+| GLM email service | `dbx-glm-email-service-<username>` | Unity AI Gateway |
 | Lakebase project | `DBX-RFP-PRESENTATION` | Lakebase Postgres |
-| Databricks App | `app/` | Databricks App (FastAPI + React) |
+| Databricks App | `dbx-customer-intelligence` | Databricks App |
+| AI/BI Dashboard | `dashboards/customer_360_dashboard.lvdash.json` | Lakeview (import via UI) |
+| PDF pipeline | `lakeflow/product_parsing_lakeflow_designer.designer.ipynb` | Lakeflow Designer |
+
+---
+
+## Demo Reset
+
+Each demo section has its own reset cell:
+
+| Section | Reset |
+|---|---|
+| Schema evolution | Run the `RESET` cell in `05_schema_evolution_demo.py` — drops table, clears dirs, ready to re-run |
+| Rescued data | Run the `RESET` cell in `06_rescued_data_demo.py` — drops table, clears dirs, ready to re-run |
+| Full Part A | `databricks bundle run dbx_setup_and_ingest` (regenerates all data + re-runs pipeline) |
+| Full Part B | `databricks bundle run dbx_part_b_training` (re-trains model + re-scores customers) |
+
+---
+
+## Part A → Part B Dependency
+
+```
+Part A outputs             → Part B consumes
+──────────────────────────────────────────────
+gold_customer_360          → 03_feature_engineering (training data + labels)
+gold_customer_360          → 04_model_training (XGBoost training)
+silver_product_catalog     → app.py /products endpoint + email context
+rfp_presentation schema    → Part B assumes schema + volumes exist (run 00_setup.py first)
+```
+
+**Part B's `00_setup.py` validates that `gold_customer_360` exists before proceeding.**
 
 ---
 
 ## Bundle Commands
 
 ```bash
-# Validate the bundle locally (no workspace changes)
+# Validate locally
 databricks bundle validate
 
-# Deploy notebooks and resource definitions to the workspace
+# Deploy all notebooks and resources
 databricks bundle deploy
 
-# Run Part A end-to-end (setup → ingest → DLT pipeline)
+# Part A (triggers the full pipeline including DLT)
 databricks bundle run dbx_setup_and_ingest
 
-# Run Part B end-to-end (feature eng → train → endpoint → batch score)
+# Streaming (start once, runs continuously)
+databricks bundle run dbx_bronze_rt
+databricks bundle run dbx_events_generator
+
+# Part B
 databricks bundle run dbx_part_b_training
 
-# Check job run status
-databricks bundle run --no-wait dbx_setup_and_ingest
-databricks jobs list-runs --job-name DBX-Part-A-Setup-and-Ingest
-
-# Destroy all deployed resources (use with caution)
-databricks bundle destroy
+# Override catalog/schema
+databricks bundle deploy -v catalog=my_catalog -v schema=my_schema
+databricks bundle run dbx_setup_and_ingest -v catalog=my_catalog -v schema=my_schema
 ```
 
 ---
 
 ## Configuration
 
-The catalog and schema are bundle variables defined in `databricks.yml`. Override them at deploy/run time without editing any files:
-
-```bash
-# Deploy to a different catalog or schema
-databricks bundle deploy -v catalog=my_catalog -v schema=my_demo_schema
-
-# Run Part A against the overridden schema
-databricks bundle run dbx_setup_and_ingest -v catalog=my_catalog -v schema=my_demo_schema
-```
-
-To change the defaults permanently, edit the `variables` block in `databricks.yml`:
+All paths derive from two variables in `databricks.yml`:
 
 ```yaml
 variables:
   catalog:
-    default: your_catalog_name
+    default: fevm_master_classic_marcus_catalog
   schema:
-    default: your_schema_name
+    default: rfp_presentation
 ```
 
-The shared constants in `shared/config.py` derive all paths from `CATALOG` and `SCHEMA` — no other files need updating.
+`shared/config.py` derives all Volume paths and table names from these — no other files need editing.
