@@ -3,13 +3,15 @@ resources:
     dbx_pipeline:
       name: DBX-Customer-360-Pipeline
       serverless: true
+      continuous: false         # triggered — run on-demand or scheduled
       catalog: ${var.catalog}
       schema: ${var.schema}
       libraries:
-        # Bronze → Silver: SCD2 ingestion into 7 Banking MVM-conformed silver tables
+        # Bronze (batch CSV, AutoLoader inline) + Silver SCD2
+        # Also reads RT bronze tables from Pipeline 1 (DBX-RT-Bronze) via UC
         - notebook:
             path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/07_sdp_bronze_silver
-        # Silver → Gold: Aggregations + join into gold_customer_360 (reads from silver tables above)
+        # Silver → Gold: assembles gold_customer_360 from all 7 silver tables
         - notebook:
             path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/08_sdp_silver_gold
       channel: CURRENT

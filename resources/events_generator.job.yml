@@ -1,0 +1,22 @@
+resources:
+  jobs:
+    dbx_events_generator:
+      name: DBX-Events-Generator
+      description: "Continuous event generator — writes digital events (10s), credit bureau (60s), and telco events (45s) to UC Volumes. Feeds Pipeline 1 (DBX-RT-Bronze)."
+
+      tasks:
+        - task_key: generate_events
+          description: "Long-running notebook: writes streaming JSON files at configured pulse rates"
+          notebook_task:
+            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/11_events_generator
+            source: WORKSPACE
+          environment_key: serverless
+          timeout_seconds: 28800   # 8 hours max — restart manually for longer demos
+
+      # Retry on failure so the stream recovers automatically
+      max_concurrent_runs: 1
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"

@@ -1,12 +1,28 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Bronze → Silver Pipeline (Spark Declarative Pipeline)
+# MAGIC # Pipeline 2 — Customer 360: Bronze (Batch) → Silver → Gold
 # MAGIC
-# MAGIC ## Enterprise Data Model Context
-# MAGIC These silver tables follow the **Databricks Banking Minimum Viable Model (MVM)** —
-# MAGIC a pre-built industry data model with **17 domains** and **227 tables** for banking.
-# MAGIC We populate **6 of the 17 domains** with data from DBX Bank's source systems.
+# MAGIC **Pipeline mode:** Triggered — run on-demand or scheduled. Processes all
+# MAGIC accumulated data since the last run, then stops.
 # MAGIC
+# MAGIC ## DAG overview
+# MAGIC
+# MAGIC ```
+# MAGIC AutoLoader(CSV) ──▶ bronze_customer_master   ──▶ silver_customers          ──┐
+# MAGIC AutoLoader(CSV) ──▶ bronze_core_banking_accs ──▶ silver_deposit_accounts   ──┤
+# MAGIC AutoLoader(CSV) ──▶ bronze_core_banking_txn  ──▶ silver_transactions        ──┤──▶ gold_customer_360
+# MAGIC AutoLoader(CSV) ──▶ bronze_loans             ──▶ silver_loan_accounts       ──┤     (in 08_sdp_silver_gold)
+# MAGIC AutoLoader(CSV) ──▶ bronze_cards_txn         ──▶ silver_card_transactions   ──┤
+# MAGIC [RT Pipeline 1] ──▶ bronze_credit_bureau     ──▶ silver_kyc_compliance     ──┤
+# MAGIC [RT Pipeline 1] ──▶ bronze_digital_events    ──▶ silver_digital_activity   ──┤
+# MAGIC [RT Pipeline 1] ──▶ bronze_telco_events      ──▶  (feeds digital_activity) ──┘
+# MAGIC ```
+# MAGIC
+# MAGIC Batch bronze tables are defined inline (AutoLoader from `batch_v1/`).
+# MAGIC RT bronze tables are owned by Pipeline 1 (`DBX-RT-Bronze`) and referenced
+# MAGIC here by their full UC path — DLT reads only new records since the last run.
+# MAGIC
+# MAGIC ## Banking MVM domains
 # MAGIC | Silver Table | MVM Domain | MVM Entity |
 # MAGIC |---|---|---|
 # MAGIC | silver_customers | customer | party + individual_profile |
@@ -16,31 +32,157 @@
 # MAGIC | silver_card_transactions | payment | payment_instruction (card) |
 # MAGIC | silver_kyc_compliance | compliance | kyc_review + CTOS/CCRIS |
 # MAGIC | silver_digital_activity | channel | digital_channel events |
-# MAGIC
-# MAGIC Full Banking MVM DDL:
-# MAGIC https://github.com/databricks-industry-solutions/lakehouse-industry-data-models/tree/main/data-models/banking/v1/mvm
+
+# COMMAND ----------
+# MAGIC %run ../shared/config
 
 # COMMAND ----------
 from pyspark import pipelines as dp
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-CATALOG = "fevm_master_classic_marcus_catalog"
-SCHEMA  = "rfp_presentation"
-FULL    = f"{CATALOG}.{SCHEMA}"
+FULL = f"{CATALOG}.{SCHEMA}"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 1 — BATCH BRONZE SOURCES (AutoLoader, triggered)
+# Owned by this pipeline. AutoLoader checkpoints ensure only new files are
+# processed on each pipeline run (availableNow semantics in triggered mode).
+# ══════════════════════════════════════════════════════════════════════════════
+
+# COMMAND ----------
+# MAGIC %md ### bronze_customer_master — Core Banking CIF (CSV, batch)
+
+# COMMAND ----------
+@dp.table(
+    name="bronze_customer_master",
+    comment="Raw CIF records from Core Banking system. AutoLoader batch ingest from batch_v1/customer_master/.",
+    table_properties={"quality": "bronze"}
+)
+def bronze_customer_master():
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format",              "csv")
+            .option("cloudFiles.inferColumnTypes",    "true")
+            .option("header",                          "true")
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
+            .option("cloudFiles.includeExistingFiles","true")
+            .option("rescuedDataColumn",              "_rescued_data")
+            .load(f"{VOLUME_DATA}/batch_v1/customer_master/")
+        .withColumn("_source_file",      input_file_name())
+        .withColumn("_ingest_timestamp", current_timestamp())
+    )
+
+# COMMAND ----------
+# MAGIC %md ### bronze_core_banking_accounts — Deposit Accounts (CSV, batch)
+
+# COMMAND ----------
+@dp.table(
+    name="bronze_core_banking_accounts",
+    comment="Raw deposit account records from Core Banking System (CBS). AutoLoader batch.",
+    table_properties={"quality": "bronze"}
+)
+def bronze_core_banking_accounts():
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format",              "csv")
+            .option("cloudFiles.inferColumnTypes",    "true")
+            .option("header",                          "true")
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
+            .option("cloudFiles.includeExistingFiles","true")
+            .option("rescuedDataColumn",              "_rescued_data")
+            .load(f"{VOLUME_DATA}/batch_v1/accounts/")
+        .withColumn("_source_file",      input_file_name())
+        .withColumn("_ingest_timestamp", current_timestamp())
+    )
+
+# COMMAND ----------
+# MAGIC %md ### bronze_core_banking_txn — Transactions (CSV, batch)
+
+# COMMAND ----------
+@dp.table(
+    name="bronze_core_banking_txn",
+    comment="Raw payment transactions from Transaction Engine. AutoLoader batch.",
+    table_properties={"quality": "bronze"}
+)
+def bronze_core_banking_txn():
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format",              "csv")
+            .option("cloudFiles.inferColumnTypes",    "true")
+            .option("header",                          "true")
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
+            .option("cloudFiles.includeExistingFiles","true")
+            .option("rescuedDataColumn",              "_rescued_data")
+            .load(f"{VOLUME_DATA}/batch_v1/transactions/")
+        .withColumn("_source_file",      input_file_name())
+        .withColumn("_ingest_timestamp", current_timestamp())
+    )
+
+# COMMAND ----------
+# MAGIC %md ### bronze_loans — Loan Facilities (CSV, batch)
+
+# COMMAND ----------
+@dp.table(
+    name="bronze_loans",
+    comment="Raw loan facility records from Loan Origination System. AutoLoader batch.",
+    table_properties={"quality": "bronze"}
+)
+def bronze_loans():
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format",              "csv")
+            .option("cloudFiles.inferColumnTypes",    "true")
+            .option("header",                          "true")
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
+            .option("cloudFiles.includeExistingFiles","true")
+            .option("rescuedDataColumn",              "_rescued_data")
+            .load(f"{VOLUME_DATA}/batch_v1/loans/")
+        .withColumn("_source_file",      input_file_name())
+        .withColumn("_ingest_timestamp", current_timestamp())
+    )
+
+# COMMAND ----------
+# MAGIC %md ### bronze_cards_txn — Card Transactions (CSV, batch)
+
+# COMMAND ----------
+@dp.table(
+    name="bronze_cards_txn",
+    comment="Raw card transactions from Card Engine. AutoLoader batch.",
+    table_properties={"quality": "bronze"}
+)
+def bronze_cards_txn():
+    return (
+        spark.readStream
+            .format("cloudFiles")
+            .option("cloudFiles.format",              "csv")
+            .option("cloudFiles.inferColumnTypes",    "true")
+            .option("header",                          "true")
+            .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
+            .option("cloudFiles.includeExistingFiles","true")
+            .option("rescuedDataColumn",              "_rescued_data")
+            .load(f"{VOLUME_DATA}/batch_v1/cards/")
+        .withColumn("_source_file",      input_file_name())
+        .withColumn("_ingest_timestamp", current_timestamp())
+    )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PART 2 — SILVER TABLES (SCD Type 2 via apply_changes + append-only)
+# Reads from bronze tables defined above (batch, in this pipeline) and from
+# RT bronze tables owned by Pipeline 1 (cross-pipeline UC table reads).
+# DLT checkpoints ensure only new bronze records are processed each run.
+# ══════════════════════════════════════════════════════════════════════════════
 
 # COMMAND ----------
 # MAGIC %md
+# MAGIC ---
 # MAGIC ### silver_customers (SCD Type 2 — MVM: customer.party + individual_profile)
 # MAGIC
-# MAGIC `dlt.apply_changes` manages full SCD Type 2 history automatically.
-# MAGIC The pipeline tracks every change to a customer record using `cif_number` as the key
-# MAGIC and `record_updated_timestamp` as the sequence column.
-# MAGIC
-# MAGIC > **Note on Data Quality for SCD Type 2 targets:** DLT does not support `@dlt.expect`
-# MAGIC > decorators directly on `apply_changes` targets. Quality checks for SCD2 tables should
-# MAGIC > be enforced upstream (in the bronze ingestion layer via `rescuedDataColumn`) or in a
-# MAGIC > downstream gold-layer view that reads from the silver SCD2 table.
+# MAGIC `apply_changes` manages full SCD Type 2 history: `cif_number` is the business key,
+# MAGIC `record_updated_timestamp` sequences changes. Every version is preserved.
 
 # COMMAND ----------
 dp.create_streaming_table(
@@ -131,7 +273,11 @@ def silver_card_transactions():
             .withColumn("_silver_timestamp", current_timestamp()))
 
 # COMMAND ----------
-# MAGIC %md ### silver_kyc_compliance (MVM: compliance.kyc_review + CTOS/CCRIS extension)
+# MAGIC %md
+# MAGIC ### silver_kyc_compliance (MVM: compliance.kyc_review + CTOS/CCRIS)
+# MAGIC **Source: `bronze_credit_bureau` — owned by Pipeline 1 (DBX-RT-Bronze)**
+# MAGIC Cross-pipeline read via full UC table path. DLT processes only new records
+# MAGIC written since the last Pipeline 2 trigger.
 
 # COMMAND ----------
 @dp.expect_or_drop("valid_cif_kyc",              "cif_number IS NOT NULL")
@@ -139,42 +285,38 @@ def silver_card_transactions():
 @dp.expect("valid_payment_conduct",               "payment_conduct_12m IN ('clean','1_missed','2_missed','3+_missed')")
 @dp.expect("no_negative_outstanding",             "total_outstanding_balance_myr IS NULL OR total_outstanding_balance_myr >= 0")
 @dp.expect("valid_bankruptcy",                    "bankruptcy_status IN ('none','voluntary','involuntary')")
-@dp.expect("no_rescued_data",                     "_rescued_data IS NULL")
 @dp.table(name="silver_kyc_compliance",
-          comment="Banking MVM: compliance.kyc_review + CTOS/CCRIS. Append-only.",
+          comment="Banking MVM: compliance.kyc_review + CTOS/CCRIS. "
+                  "Source: bronze_credit_bureau (Pipeline 1 — RT Bronze). Append-only.",
           table_properties={"quality": "silver"})
 def silver_kyc_compliance():
+    # Cross-pipeline read: bronze_credit_bureau is owned by DBX-RT-Bronze (Pipeline 1).
+    # spark.readStream.table() reads from the UC-registered streaming table directly.
     return (spark.readStream.table(f"{FULL}.bronze_credit_bureau")
             .withColumn("_silver_timestamp", current_timestamp()))
 
 # COMMAND ----------
-# MAGIC %md ### silver_digital_activity (MVM: channel domain — aggregated from telco + digital events)
+# MAGIC %md
+# MAGIC ### silver_digital_activity (MVM: channel domain — digital events + telco signals)
+# MAGIC **Sources: `bronze_digital_events` + `bronze_telco_events` — both owned by Pipeline 1**
+# MAGIC Union of digital app events (real-time) and telco partner signals (near-RT).
 
 # COMMAND ----------
 @dp.expect_or_drop("valid_party_digital",  "party_id IS NOT NULL")
 @dp.expect("valid_event_type",             "event_type IN ('login','view_product','apply','fund_transfer','bill_pay','investment','logout') OR event_type IS NULL")
-@dp.expect("no_rescued_data",              "_rescued_data IS NULL")
 @dp.table(name="silver_digital_activity",
-          comment="Banking MVM: channel domain — digital + telco events. Append-only.",
+          comment="Banking MVM: channel domain — digital events + telco signals. "
+                  "Sources: bronze_digital_events + bronze_telco_events (Pipeline 1). Append-only.",
           table_properties={"quality": "silver"})
 def silver_digital_activity():
+    # Cross-pipeline reads from Pipeline 1 (DBX-RT-Bronze)
     digital = (spark.readStream.table(f"{FULL}.bronze_digital_events")
                .withColumn("source", lit("digital_banking"))
                .withColumn("_silver_timestamp", current_timestamp()))
+
     telco   = (spark.readStream.table(f"{FULL}.bronze_telco_events")
                .withColumn("event_type", lit(None).cast("string"))
                .withColumn("source", lit("telco"))
                .withColumn("_silver_timestamp", current_timestamp()))
-    return digital.unionByName(telco, allowMissingColumns=True)
 
-# COMMAND ----------
-# MAGIC %md
-# MAGIC ## How to Deploy This Pipeline
-# MAGIC
-# MAGIC 1. Go to Databricks → Pipelines → Create Pipeline
-# MAGIC 2. Pipeline name: `DBX-Bronze-Silver`
-# MAGIC 3. Source: select this notebook (`07_sdp_bronze_silver.py`)
-# MAGIC 4. Target catalog: `fevm_master_classic_marcus_catalog`
-# MAGIC 5. Target schema: `rfp_presentation`
-# MAGIC 6. Cluster: Serverless
-# MAGIC 7. Click Start — the pipeline creates all 7 silver tables automatically
+    return digital.unionByName(telco, allowMissingColumns=True)

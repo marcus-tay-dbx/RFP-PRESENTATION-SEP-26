@@ -38,6 +38,7 @@ for subdir in ["batch_v1/customer_master", "batch_v1/accounts", "batch_v1/loans"
                "batch_v1/transactions", "batch_v1/cards",
                "batch_v2/customer_master",
                "nearrt/credit_bureau", "nearrt/telco_events",
+               "streaming/digital_events", "streaming/credit_bureau", "streaming/telco_events",
                "schema_evolution", "rescued_demo",
                "_schemas"]:
     dbutils.fs.mkdirs(f"{VOLUME_DATA}/{subdir}")
