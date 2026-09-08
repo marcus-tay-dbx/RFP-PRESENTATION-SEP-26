@@ -6,7 +6,7 @@
 # MAGIC %md
 # MAGIC # Continuous Deployment — 3-Task MLflow CI/CD Pipeline
 # MAGIC
-# MAGIC This notebook wires the full CI/CD pipeline for Alliance Bank's recommendation model:
+# MAGIC This notebook wires the full CI/CD pipeline for DBX Bank's recommendation model:
 # MAGIC
 # MAGIC ```
 # MAGIC  [08-MLFlow-Evaluate]  →  [08-MLFlow-Approve]  →  [08-MLFlow-Deploy]

@@ -4,10 +4,10 @@
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Unity AI Gateway — Governing GLM 5.2 for Alliance Bank
+# MAGIC # Unity AI Gateway — Governing GLM 5.2 for DBX Bank
 # MAGIC
 # MAGIC ## Business Story
-# MAGIC Alliance Bank doesn't just deploy AI — they govern it. Every AI call that drafts
+# MAGIC DBX Bank doesn't just deploy AI — they govern it. Every AI call that drafts
 # MAGIC a customer email flows through Unity AI Gateway: rate-limited, guardrailed, and
 # MAGIC fully auditable. The same governance model that controls data access now controls
 # MAGIC AI access.
@@ -60,7 +60,7 @@ else:
     print(f"Create service: {resp.status_code} — {resp.text[:400]}")
 
 # COMMAND ----------
-# MAGIC %md ### Quick Test — Email Draft for Alliance Bank Customer
+# MAGIC %md ### Quick Test — Email Draft for DBX Bank Customer
 
 # COMMAND ----------
 # Wait a moment for the service to initialise
@@ -70,7 +70,7 @@ test_prompt = {
     "messages": [{
         "role": "user",
         "content": (
-            "You are an Alliance Bank Relationship Manager. "
+            "You are an DBX Bank Relationship Manager. "
             "Draft a 100-word email to Ahmad bin Ibrahim (Affluent segment, 7 years tenure) "
             "recommending he considers our WealthSmart Income Fund given his recent deposit activity. "
             "Professional tone, Bahasa Malaysia welcome."
@@ -122,7 +122,7 @@ else:
 # COMMAND ----------
 # MAGIC %md ## Section C: Rate Limits
 # MAGIC
-# MAGIC Alliance Bank sets two tiers:
+# MAGIC DBX Bank sets two tiers:
 # MAGIC - **Per-user**: 100 requests/minute — prevents runaway RM email generation
 # MAGIC - **Per-endpoint (daily)**: 5,000 requests — keeps monthly AI spend predictable
 
@@ -185,7 +185,7 @@ else:
 # COMMAND ----------
 # MAGIC %md ## Section E: Traffic Splitting — GLM 5.2 (Quality) vs GLM 5.3 Flash (Speed)
 # MAGIC
-# MAGIC **Story:** Alliance Bank wants to A/B test model quality vs cost:
+# MAGIC **Story:** DBX Bank wants to A/B test model quality vs cost:
 # MAGIC - **70% → GLM 5.2**: full-quality email drafts for Affluent & Priority customers
 # MAGIC - **30% → GLM 5.3 Flash**: faster, cheaper model for Mass Market notifications
 
@@ -220,13 +220,13 @@ print(f"  30% → GLM 5.3 Flash  (speed, Mass Market)")
 # COMMAND ----------
 # MAGIC %md ## Section F: Query system.ai_gateway — Full Audit Trail
 # MAGIC
-# MAGIC **Story:** Compliance team can query every AI call made by Alliance Bank RMs —
+# MAGIC **Story:** Compliance team can query every AI call made by DBX Bank RMs —
 # MAGIC who called it, when, what was asked, what model responded, how many tokens.
 # MAGIC Zero friction: same SQL interface as all other Databricks data.
 
 # COMMAND ----------
 # MAGIC %sql
-# MAGIC -- Every AI call Alliance Bank makes is logged here — full audit trail
+# MAGIC -- Every AI call DBX Bank makes is logged here — full audit trail
 # MAGIC SELECT
 # MAGIC   timestamp_ms / 1000                     AS request_time_epoch,
 # MAGIC   from_unixtime(timestamp_ms / 1000)      AS request_time,

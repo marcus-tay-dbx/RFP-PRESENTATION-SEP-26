@@ -10,7 +10,7 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Batch Inference — Score All Alliance Bank Customers
+# MAGIC # Batch Inference — Score All DBX Bank Customers
 # MAGIC
 # MAGIC This notebook:
 # MAGIC 1. Loads the `@champion` model (promotes `@dev` → `@champion` if none exists)
@@ -105,7 +105,7 @@ spark.sql(f"""
         'delta.enableChangeDataFeed' = 'true',
         'delta.autoOptimize.optimizeWrite' = 'true'
     )
-    COMMENT 'Alliance Bank product recommendation batch inference log'
+    COMMENT 'DBX Bank product recommendation batch inference log'
 """)
 
 (

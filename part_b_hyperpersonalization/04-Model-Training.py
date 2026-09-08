@@ -12,7 +12,7 @@ dbutils.library.restartPython()
 # MAGIC %md
 # MAGIC # Model Training — RF vs XGBoost Competition
 # MAGIC
-# MAGIC Alliance Bank's recommendation engine competes two algorithms:
+# MAGIC DBX Bank's recommendation engine competes two algorithms:
 # MAGIC - **RandomForestClassifier** — interpretable baseline (200 trees, class_weight="balanced")
 # MAGIC - **XGBoostClassifier** — gradient boosting (multi:softprob, 300 trees)
 # MAGIC

@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Load Test — Alliance Bank Recommendation Endpoint
+# MAGIC # Load Test — DBX Bank Recommendation Endpoint
 # MAGIC
 # MAGIC Simulates real-world RM portal traffic and verifies endpoint behaviour under load.
 # MAGIC

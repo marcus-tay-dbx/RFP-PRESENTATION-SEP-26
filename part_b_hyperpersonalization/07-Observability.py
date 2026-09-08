@@ -12,7 +12,7 @@ dbutils.library.restartPython()
 # MAGIC %md
 # MAGIC # Observability — Model Monitoring, SHAP, and Drift Detection
 # MAGIC
-# MAGIC This notebook covers the full observability stack for Alliance Bank's
+# MAGIC This notebook covers the full observability stack for DBX Bank's
 # MAGIC recommendation model:
 # MAGIC
 # MAGIC | Section | Topic |

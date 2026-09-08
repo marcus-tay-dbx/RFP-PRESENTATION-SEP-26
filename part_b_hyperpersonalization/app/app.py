@@ -6,7 +6,7 @@ import os, re
 from pydantic import BaseModel
 from typing import Optional
 
-app = FastAPI(title="Alliance Bank Customer Intelligence API")
+app = FastAPI(title="DBX Bank Customer Intelligence API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 w = WorkspaceClient()
@@ -79,19 +79,29 @@ def _rows(sql: str, cols: Optional[list] = None) -> list:
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "Alliance Bank Customer Intelligence API"}
+    return {"status": "ok", "service": "DBX Bank Customer Intelligence API"}
 
 
-# ── Customer list (top 20 active) ─────────────────────────────────────────────
+# ── Customer overview — joins with recommendations for the dashboard ──────────
 @app.get("/api/customers")
-def list_customers():
+def list_customers(limit: int = 200):
+    """Returns all active customers joined with batch recommendations for the overview table."""
     sql = f"""
-        SELECT party_id, cif_number, legal_name, lifestyle_segment,
-               total_deposit_balance_myr, ctos_score, primary_state
-        FROM {FULL}.gold_customer_360
-        WHERE lifecycle_status = 'active'
-        ORDER BY total_deposit_balance_myr DESC
-        LIMIT 20
+        SELECT
+            c.party_id, c.cif_number, c.legal_name, c.lifestyle_segment,
+            c.customer_segment, c.primary_state, c.lifecycle_status,
+            c.total_deposit_balance_myr, c.ctos_score,
+            c.relationship_tenure_years, c.annual_income_amount,
+            c.age, c.number_of_dependents, c.employment_status,
+            c.mobile_app_user_flag, c.digital_maturity_score,
+            c.is_shariah_preferred, c.nps_score,
+            COALESCE(r.recommendation_1, 'PENDING') AS recommendation_1,
+            COALESCE(CAST(r.confidence_1 AS STRING), '0') AS confidence_1
+        FROM {FULL}.gold_customer_360 c
+        LEFT JOIN {FULL}.gold_product_recommendations r ON c.party_id = r.party_id
+        WHERE c.lifecycle_status = 'active'
+        ORDER BY c.total_deposit_balance_myr DESC
+        LIMIT {limit}
     """
     return _rows(sql)
 
@@ -227,12 +237,12 @@ def draft_email(req: EmailRequest):
     seg_label  = str(segment).replace("_", " ").title()
     lang_instr = "in Bahasa Malaysia" if req.language == "ms" else "in English"
 
-    prompt = f"""You are an Alliance Bank Malaysia relationship manager writing to a valued customer.
+    prompt = f"""You are an DBX Bank Malaysia relationship manager writing to a valued customer.
 
 Customer Profile:
 - Name: {customer_name}
 - Segment: {seg_label}
-- Tenure: {tenure} years with Alliance Bank
+- Tenure: {tenure} years with DBX Bank
 - Recommended product: {product_name} (model confidence: {req.confidence:.0f}%)
 
 Write a short, warm, professional email {lang_instr} (maximum 150 words).
@@ -241,7 +251,7 @@ Write a short, warm, professional email {lang_instr} (maximum 150 words).
 - Briefly introduce the recommended product and 1-2 key benefits
 - End with a friendly call to action (schedule a meeting or call)
 - DO NOT include specific interest rates, specific financial advice, account numbers, or IC numbers
-- Sign off as: Warm regards, Your Alliance Bank Relationship Team"""
+- Sign off as: Warm regards, Your DBX Bank Relationship Team"""
 
     payload = {
         "messages":    [{"role": "user", "content": prompt}],
@@ -304,7 +314,7 @@ def explain_recommendation(req: ExplainRequest):
     digital_score = c.get("digital_maturity_score", 0)
     product_views = c.get("last_product_category_viewed", "")
 
-    prompt = f"""You are an Alliance Bank AI advisor. A machine learning model has recommended "{product_name}" for a customer with the following profile:
+    prompt = f"""You are an DBX Bank AI advisor. A machine learning model has recommended "{product_name}" for a customer with the following profile:
 
 Customer Profile:
 - Name: {name} | Segment: {segment} | Tenure: {tenure} years

@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Exploratory Data Analysis — Alliance Bank Customer 360
+# MAGIC # Exploratory Data Analysis — DBX Bank Customer 360
 # MAGIC Understanding the 1,000 customer profiles from Part A before building the recommendation model.
 
 # COMMAND ----------
@@ -17,7 +17,7 @@ df.printSchema()
 
 # COMMAND ----------
 # MAGIC %md ## Customer Segment Distribution
-# MAGIC *Alliance Bank targets: Mass Market, Emerging Affluent, Affluent, Priority, Private Banking*
+# MAGIC *DBX Bank targets: Mass Market, Emerging Affluent, Affluent, Priority, Private Banking*
 
 # COMMAND ----------
 display(
@@ -90,7 +90,7 @@ display(
 
 # COMMAND ----------
 # MAGIC %md ## Shariah-Preferred Customers
-# MAGIC *Alliance Bank offers Islamic banking products — key segmentation dimension*
+# MAGIC *DBX Bank offers Islamic banking products — key segmentation dimension*
 
 # COMMAND ----------
 display(

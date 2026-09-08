@@ -5,9 +5,9 @@
 # COMMAND ----------
 # MAGIC %md
 # MAGIC # Part B — Hyperpersonalization: Next Best Product Recommendation
-# MAGIC ## Alliance Bank × Databricks — ML Lifecycle Demo
+# MAGIC ## DBX Bank × Databricks — ML Lifecycle Demo
 # MAGIC
-# MAGIC Alliance Bank serves 1,000+ customer profiles generated in Part A.
+# MAGIC DBX Bank serves 1,000+ customer profiles generated in Part A.
 # MAGIC Part B trains a **multi-class classifier** to predict the next product each customer
 # MAGIC should be offered — then deploys it as a **real-time serving endpoint** with full
 # MAGIC **MLflow governance**, **feature store**, **drift monitoring**, and **CI/CD automation**.
@@ -91,7 +91,7 @@ displayHTML("""
 </style>
 
 <h2 style="color:#FF3621; font-family:DM Sans,sans-serif;">
-  Databricks ML Lifecycle — Alliance Bank Hyperpersonalization
+  Databricks ML Lifecycle — DBX Bank Hyperpersonalization
 </h2>
 
 <table class="agenda-table">

@@ -1,926 +1,1107 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-// ── Palette & constants ───────────────────────────────────────────────────────
-const C = {
-  navy:    '#1B3A6B',
-  navyD:   '#122848',
-  red:     '#C8102E',
-  white:   '#FFFFFF',
-  bg:      '#F5F7FA',
-  bg2:     '#EDF1F7',
-  g50:     '#F8FAFC',
-  g100:    '#F1F5F9',
-  g200:    '#E2E8F0',
-  g400:    '#94A3B8',
-  g600:    '#475569',
-  g900:    '#0F172A',
+// ── TYPES ───────────────────────────────────────────────────────────────────
+type Theme = 'light' | 'dark' | 'system';
+type Page = 'overview' | 'detail';
+type SortField = 'total_deposit_balance_myr' | 'ctos_score' | 'relationship_tenure_years' | 'legal_name' | 'confidence_1';
+interface Customer { [key: string]: any; }
+
+// ── THEME TOKENS ────────────────────────────────────────────────────────────
+const LIGHT = {
+  bg: '#F1F5F9', card: '#FFFFFF', border: '#E2E8F0',
+  text: '#0F172A', muted: '#64748B', subtle: '#94A3B8',
+  sidebar: '#1E293B', sidebarText: '#F8FAFC', sidebarMuted: '#94A3B8',
+  input: '#F8FAFC', inputBorder: '#CBD5E1',
+  hover: '#F8FAFC', activeRow: '#EFF6FF',
+  tableHeader: '#F8FAFC', tableBorder: '#E2E8F0',
+  badge: '#E2E8F0', badgeText: '#475569',
+  red: '#FF3621', redHover: '#E5311E',
+  green: '#16A34A', amber: '#D97706', crimson: '#DC2626',
+  navy: '#1B3A6B', blue: '#2563EB', blueLight: '#DBEAFE',
+};
+const DARK = {
+  bg: '#0F172A', card: '#1E293B', border: '#334155',
+  text: '#F1F5F9', muted: '#94A3B8', subtle: '#64748B',
+  sidebar: '#020617', sidebarText: '#F1F5F9', sidebarMuted: '#64748B',
+  input: '#1E293B', inputBorder: '#475569',
+  hover: '#334155', activeRow: '#1E3A5F',
+  tableHeader: '#1E293B', tableBorder: '#334155',
+  badge: '#334155', badgeText: '#CBD5E1',
+  red: '#FF3621', redHover: '#E5311E',
+  green: '#22C55E', amber: '#FBBF24', crimson: '#F87171',
+  navy: '#3B82F6', blue: '#60A5FA', blueLight: '#1E3A5F',
 };
 
-type SegKey = 'mass_market' | 'affluent' | 'high_net_worth' | 'private_banking' | 'premier';
-type ProdKey = 'CREDIT_CARD' | 'HOME_LOAN' | 'PERSONAL_LOAN' | 'INVESTMENT' | 'INSURANCE' | 'NO_ACTION';
-
-const SEGMENTS: Record<SegKey, { color: string; label: string; bg: string; textColor: string }> = {
-  mass_market:     { color: '#64748B', label: 'Mass Market',     bg: '#F1F5F9', textColor: '#334155' },
-  affluent:        { color: '#1E40AF', label: 'Affluent',        bg: '#DBEAFE', textColor: '#1E40AF' },
-  high_net_worth:  { color: '#92400E', label: 'High Net Worth',  bg: '#FEF3C7', textColor: '#92400E' },
-  private_banking: { color: '#FFFFFF', label: 'Private Banking', bg: '#1B3A6B', textColor: '#FFFFFF' },
-  premier:         { color: '#6D28D9', label: 'Premier',         bg: '#EDE9FE', textColor: '#6D28D9' },
-};
-
-const PRODUCTS: Record<ProdKey, { icon: string; label: string; color: string }> = {
-  CREDIT_CARD:   { icon: '💳', label: 'Credit Card',    color: '#1B3A6B' },
-  HOME_LOAN:     { icon: '🏠', label: 'Home Financing', color: '#047857' },
-  PERSONAL_LOAN: { icon: '💰', label: 'Personal Loan',  color: '#0369A1' },
-  INVESTMENT:    { icon: '📈', label: 'Investment',     color: '#7C3AED' },
-  INSURANCE:     { icon: '🛡️', label: 'Takaful',        color: '#B45309' },
-  NO_ACTION:     { icon: '✓',  label: 'No Action',      color: '#64748B' },
-};
-
-const fmtMYR = (v: number) =>
-  `MYR ${v.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-const fmtK = (v: number) =>
-  `MYR ${(v / 1000).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}K`;
-const ctosColor = (score: number) =>
-  score >= 700 ? '#059669' : score >= 600 ? '#D97706' : '#DC2626';
-
-function getSeg(key: string) {
-  return SEGMENTS[(key as SegKey)] ?? SEGMENTS.mass_market;
+function useThemeColors(theme: Theme): typeof LIGHT {
+  const [dark, setDark] = useState(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false
+  );
+  useEffect(() => {
+    if (theme !== 'system') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [theme]);
+  if (theme === 'dark' || (theme === 'system' && dark)) return DARK;
+  return LIGHT;
 }
-function getProd(key: string) {
-  return PRODUCTS[(key as ProdKey)] ?? PRODUCTS.NO_ACTION;
-}
 
-// ── Tiny shared components ────────────────────────────────────────────────────
-const Row = ({ label, value, valueColor }: { label: string; value: React.ReactNode; valueColor?: string }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '9px 12px', background: C.g50, borderRadius: '8px' }}>
-    <span style={{ fontSize: '12px', color: C.g600 }}>{label}</span>
-    <span style={{ fontSize: '13px', fontWeight: 600, color: valueColor || C.g900 }}>{value ?? '—'}</span>
+// ── REFERENCE DATA ──────────────────────────────────────────────────────────
+const RM_LIST = [
+  'Ahmad Fadzillah bin Roslan',
+  'Nurul Hana binti Zainal Abidin',
+  'Rajan Kumar Subramaniam',
+  'Tan Wei Ming',
+  'Priya Nair d/o Krishnan',
+  'Mohd Izzat bin Ibrahim',
+];
+
+const SEGMENTS: Record<string, { label: string; bg: string; text: string }> = {
+  mass_market:          { label: 'Mass Market',    bg: '#E2E8F0', text: '#475569' },
+  affluent:             { label: 'Affluent',        bg: '#DBEAFE', text: '#1D4ED8' },
+  high_net_worth:       { label: 'High Net Worth',  bg: '#FEF9C3', text: '#A16207' },
+  private_banking:      { label: 'Private Banking', bg: '#1B3A6B', text: '#FFFFFF' },
+  premier:              { label: 'Premier',         bg: '#EDE9FE', text: '#6D28D9' },
+};
+
+const PRODUCTS: Record<string, { icon: string; label: string; color: string }> = {
+  CREDIT_CARD:   { icon: '💳', label: 'Credit Card',     color: '#2563EB' },
+  HOME_LOAN:     { icon: '🏠', label: 'Home Loan',       color: '#16A34A' },
+  PERSONAL_LOAN: { icon: '💰', label: 'Personal Loan',   color: '#D97706' },
+  INVESTMENT:    { icon: '📈', label: 'Investment',      color: '#7C3AED' },
+  INSURANCE:     { icon: '🛡️', label: 'Insurance',       color: '#0891B2' },
+  NO_ACTION:     { icon: '✓',  label: 'No Action',       color: '#64748B' },
+  PENDING:       { icon: '⏳', label: 'Pending',         color: '#94A3B8' },
+};
+
+// ── UTILITIES ────────────────────────────────────────────────────────────────
+const fmtMYR = (v: any) => {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  if (n >= 1e9) return `MYR ${(n/1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `MYR ${(n/1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `MYR ${(n/1e3).toFixed(0)}K`;
+  return `MYR ${n.toLocaleString('en-MY', { maximumFractionDigits: 0 })}`;
+};
+const fmtMYRFull = (v: any) => {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return `MYR ${n.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+const fmtMYT = (v: any) => {
+  if (!v) return '—';
+  try {
+    return new Date(v).toLocaleString('en-MY', {
+      timeZone: 'Asia/Kuala_Lumpur',
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch { return String(v); }
+};
+const nowMYT = () => new Date().toLocaleString('en-MY', {
+  timeZone: 'Asia/Kuala_Lumpur',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+}) + ' MYT';
+
+const initials = (name: string) =>
+  name?.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '??';
+
+const ctosColor = (score: any, C: typeof LIGHT) => {
+  const n = parseInt(score);
+  if (isNaN(n)) return C.muted;
+  if (n >= 700) return C.green;
+  if (n >= 600) return C.amber;
+  return C.crimson;
+};
+
+const getProd = (key: string) => PRODUCTS[key] || PRODUCTS.PENDING;
+const getSeg  = (key: string) => SEGMENTS[key] || { label: key || '—', bg: '#E2E8F0', text: '#475569' };
+
+// ── SHARED COMPONENTS ────────────────────────────────────────────────────────
+const Badge = ({ label, bg, text }: { label: string; bg: string; text: string }) => (
+  <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px',
+                 fontWeight: 600, background: bg, color: text, whiteSpace: 'nowrap' }}>
+    {label}
+  </span>
+);
+
+const KpiCard = ({ label, value, sub, C }: { label: string; value: string; sub?: string; C: typeof LIGHT }) => (
+  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '12px',
+                padding: '16px 20px', flex: 1, minWidth: '160px' }}>
+    <div style={{ fontSize: '11px', color: C.muted, fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.06em', marginBottom: '6px' }}>{label}</div>
+    <div style={{ fontSize: '22px', fontWeight: 800, color: C.text, lineHeight: 1.1 }}>{value}</div>
+    {sub && <div style={{ fontSize: '11px', color: C.muted, marginTop: '4px' }}>{sub}</div>}
   </div>
 );
 
-// ── Main App ──────────────────────────────────────────────────────────────────
-export default function App() {
-  const [customers, setCustomers]       = useState<any[]>([]);
-  const [searchQuery, setSearchQuery]   = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searching, setSearching]       = useState(false);
-  const [selectedId, setSelectedId]     = useState<string | null>(null);
-  const [customer, setCustomer]         = useState<any>(null);
-  const [recs, setRecs]                 = useState<any>(null);
-  const [loading, setLoading]           = useState(false);
-  const [activeTab, setActiveTab]       = useState('Profile');
-  const [liveLoading, setLiveLoading]   = useState(false);
-  const [liveError, setLiveError]       = useState('');
-  const [showEmail, setShowEmail]       = useState(false);
-  const [emailDraft, setEmailDraft]     = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [showExplain, setShowExplain]   = useState<1|2|null>(null);
-  const [explanation, setExplanation]   = useState('');
-  const [explainLoading, setExplainLoading] = useState(false);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+const Tab = ({ label, active, onClick, C }: { label: string; active: boolean; onClick: () => void; C: typeof LIGHT }) => (
+  <button onClick={onClick} style={{
+    padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+    fontWeight: active ? 700 : 500, fontSize: '13px',
+    background: active ? C.red : 'transparent',
+    color: active ? '#FFFFFF' : C.muted,
+    transition: 'all 0.15s',
+  }}>{label}</button>
+);
 
-  // Load top 20 customers on mount
+const InfoRow = ({ label, value, C }: { label: string; value: string; C: typeof LIGHT }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
+    <span style={{ fontSize: '13px', color: C.muted }}>{label}</span>
+    <span style={{ fontSize: '13px', fontWeight: 500, color: C.text }}>{value || '—'}</span>
+  </div>
+);
+
+// ── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+  // ── Theme & RM ──────────────────────────────────────────────────────────
+  const [theme, setTheme] = useState<Theme>('light');
+  const C = useThemeColors(theme);
+  const [rm, setRm] = useState(RM_LIST[0]);
+  const [showRmDrop, setShowRmDrop] = useState(false);
+  const [showThemeDrop, setShowThemeDrop] = useState(false);
+  const [myt, setMyt] = useState(nowMYT);
+
   useEffect(() => {
-    fetch('/api/customers')
-      .then(r => r.json())
-      .then(setCustomers)
-      .catch(() => {});
+    const t = setInterval(() => setMyt(nowMYT()), 30000);
+    return () => clearInterval(t);
   }, []);
 
-  // Debounced search
-  const handleSearch = (q: string) => {
-    setSearchQuery(q);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (q.length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    searchTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/customers/search?q=${encodeURIComponent(q)}&limit=10`);
-        setSearchResults(await res.json());
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-  };
+  // ── Routing ─────────────────────────────────────────────────────────────
+  const [page, setPage] = useState<Page>('overview');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const loadCustomer = async (id: string) => {
-    if (id === selectedId) return;
-    setSelectedId(id);
-    setSearchQuery('');
-    setSearchResults([]);
+  // ── Overview state ───────────────────────────────────────────────────────
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [searchQ, setSearchQ] = useState('');
+  const [segFilter, setSegFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+  const [sortField, setSortField] = useState<SortField>('total_deposit_balance_myr');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page_, setPage_] = useState(1);
+  const PAGE_SIZE = 25;
+
+  // ── Detail state ─────────────────────────────────────────────────────────
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [recs, setRecs] = useState<Customer | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailTab, setDetailTab] = useState('Profile');
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState('');
+
+  // ── Modals ───────────────────────────────────────────────────────────────
+  const [showEmail, setShowEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [showExplain, setShowExplain] = useState<1|2|null>(null);
+  const [explanation, setExplanation] = useState('');
+  const [explainLoading, setExplainLoading] = useState(false);
+
+  // ── Fetch customer list ──────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/customers?limit=200')
+      .then(r => r.json())
+      .then(d => setCustomers(Array.isArray(d) ? d : []))
+      .catch(() => setCustomers([]))
+      .finally(() => setLoadingList(false));
+  }, []);
+
+  // ── Fetch customer detail ────────────────────────────────────────────────
+  const loadDetail = useCallback(async (id: string) => {
+    setLoadingDetail(true);
     setCustomer(null);
     setRecs(null);
-    setEmailDraft('');
     setLiveError('');
-    setActiveTab('Profile');
-    setLoading(true);
+    setDetailTab('Profile');
     try {
       const [c, r] = await Promise.all([
-        fetch(`/api/customer/${id}`).then(res => res.json()),
-        fetch(`/api/customer/${id}/recommendations`).then(res => res.json()),
+        fetch(`/api/customer/${id}`).then(r => r.json()),
+        fetch(`/api/customer/${id}/recommendations`).then(r => r.json()).catch(() => null),
       ]);
       setCustomer(c);
       setRecs(r);
-    } catch {
-      // keep loading state visible — customer may partially load
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    setLoadingDetail(false);
+  }, []);
+
+  const openDetail = (id: string) => {
+    setSelectedId(id);
+    setPage('detail');
+    loadDetail(id);
   };
 
+  // ── Live score ───────────────────────────────────────────────────────────
   const liveScore = async () => {
     if (!selectedId) return;
-    setLiveLoading(true);
-    setLiveError('');
+    setLiveLoading(true); setLiveError('');
     try {
-      const res = await fetch(`/api/customer/${selectedId}/recommend-live`, { method: 'POST' });
-      if (!res.ok) throw new Error(`${res.status}`);
-      setRecs(await res.json());
-    } catch (e: any) {
-      setLiveError('Live scoring failed — check endpoint availability');
-    } finally {
-      setLiveLoading(false);
-    }
+      const r = await fetch(`/api/customer/${selectedId}/recommend-live`, { method: 'POST' });
+      if (!r.ok) throw new Error(`${r.status}`);
+      setRecs(await r.json());
+    } catch { setLiveError('Live scoring failed — check endpoint availability'); }
+    setLiveLoading(false);
   };
 
+  // ── Draft email ──────────────────────────────────────────────────────────
   const draftEmail = async () => {
-    if (!customer || !recs) return;
-    setShowEmail(true);
-    setEmailDraft('');
-    setEmailLoading(true);
+    if (!customer) return;
+    setShowEmail(true); setEmailDraft(''); setEmailLoading(true);
     try {
-      const res = await fetch('/api/draft-email', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch('/api/draft-email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          party_id:      customer.party_id,
-          product:       recs.recommendation_1,
-          confidence:    recs.confidence_1,
-          customer_name: customer.legal_name,
-          segment:       customer.lifestyle_segment,
-          tenure:        customer.relationship_tenure_years,
+          party_id: customer.party_id, product: recs?.recommendation_1,
+          confidence: recs?.confidence_1, customer_name: customer.legal_name,
+          segment: customer.lifestyle_segment, tenure: customer.relationship_tenure_years,
         }),
       });
-      const data = await res.json();
-      setEmailDraft(data.email_draft || '(No content returned)');
-    } catch {
-      setEmailDraft('Error generating email. Please try again.');
-    } finally {
-      setEmailLoading(false);
-    }
+      const d = await r.json();
+      setEmailDraft(d.email_draft || '(No content)');
+    } catch { setEmailDraft('Error generating email.'); }
+    setEmailLoading(false);
   };
 
+  // ── Explain ─────────────────────────────────────────────────────────────
   const explainRec = async (rank: 1|2) => {
     if (!customer || !recs) return;
     const product    = rank === 1 ? recs.recommendation_1 : recs.recommendation_2;
-    const confidence = rank === 1 ? recs.confidence_1     : recs.confidence_2;
-    setShowExplain(rank);
-    setExplanation('');
-    setExplainLoading(true);
+    const confidence = rank === 1 ? recs.confidence_1 : recs.confidence_2;
+    setShowExplain(rank); setExplanation(''); setExplainLoading(true);
     try {
-      const res = await fetch('/api/explain-recommendation', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch('/api/explain-recommendation', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ party_id: customer.party_id, product, confidence, recommendation_rank: rank }),
       });
-      const data = await res.json();
-      setExplanation(data.explanation || '(No explanation returned)');
-    } catch {
-      setExplanation('Unable to generate explanation. Please try again.');
-    } finally {
-      setExplainLoading(false);
-    }
+      const d = await r.json();
+      setExplanation(d.explanation || '(No explanation)');
+    } catch { setExplanation('Error generating explanation.'); }
+    setExplainLoading(false);
   };
 
-  const displayList = searchQuery.length >= 2 ? searchResults : customers;
-  const seg = customer ? getSeg(customer.lifestyle_segment) : null;
+  // ── Derived overview data ────────────────────────────────────────────────
+  const states = useMemo(() => Array.from(new Set(customers.map(c => c.primary_state).filter(Boolean))).sort(), [customers]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    let data = customers.filter(c => {
+      const q = searchQ.toLowerCase();
+      const nameMatch = !q || c.legal_name?.toLowerCase().includes(q) || c.cif_number?.toLowerCase().includes(q);
+      const segMatch  = !segFilter || c.lifestyle_segment === segFilter;
+      const stateMatch = !stateFilter || c.primary_state === stateFilter;
+      return nameMatch && segMatch && stateMatch;
+    });
+    data = [...data].sort((a, b) => {
+      const av = a[sortField], bv = b[sortField];
+      if (sortField === 'legal_name') {
+        return sortDir === 'asc' ? String(av||'').localeCompare(String(bv||'')) : String(bv||'').localeCompare(String(av||''));
+      }
+      return sortDir === 'asc' ? (parseFloat(av)||0) - (parseFloat(bv)||0) : (parseFloat(bv)||0) - (parseFloat(av)||0);
+    });
+    return data;
+  }, [customers, searchQ, segFilter, stateFilter, sortField, sortDir]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pageData   = filtered.slice((page_-1)*PAGE_SIZE, page_*PAGE_SIZE);
+
+  const kpis = useMemo(() => {
+    const active = customers.filter(c => c.lifecycle_status === 'active');
+    const totalBal = active.reduce((s, c) => s + (parseFloat(c.total_deposit_balance_myr) || 0), 0);
+    const avgCtos  = active.length ? Math.round(active.reduce((s,c) => s + (parseInt(c.ctos_score)||0), 0) / active.length) : 0;
+    const withRec  = active.filter(c => c.recommendation_1 && c.recommendation_1 !== 'PENDING' && c.recommendation_1 !== 'NO_ACTION').length;
+    return { count: active.length, totalBal, avgCtos, recPct: active.length ? Math.round(100*withRec/active.length) : 0 };
+  }, [customers]);
+
+  // ── Sort toggle ──────────────────────────────────────────────────────────
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('desc'); }
+  };
+  const sortIcon = (field: SortField) => sortField === field ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+
+  // ── Styles helpers ───────────────────────────────────────────────────────
+  const cardStyle: React.CSSProperties = {
+    background: C.card, border: `1px solid ${C.border}`,
+    borderRadius: '12px', padding: '20px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: "'Inter', 'system-ui', sans-serif",
-                  background: C.bg, overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text,
+                  fontFamily: "'Inter', 'system-ui', sans-serif",
+                  transition: 'background 0.2s, color 0.2s' }}>
 
-      {/* ════════════════ LEFT SIDEBAR ═══════════════════════════════════════ */}
-      <aside style={{ width: '280px', minWidth: '280px', background: C.navy, color: C.white,
-                      display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+      {/* ════════════════ HEADER ════════════════════════════════════════════ */}
+      <header style={{ background: C.sidebar, color: C.sidebarText,
+                       padding: '0 24px', height: '56px',
+                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                       position: 'sticky', top: 0, zIndex: 100,
+                       borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
         {/* Logo */}
-        <div style={{ padding: '18px 16px 14px',
-                      borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', background: C.red, borderRadius: '8px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontWeight: 900, fontSize: '16px', letterSpacing: '-1px',
-                          flexShrink: 0 }}>
-              Ab
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.2px',
-                            lineHeight: '1.1' }}>
-                Alliance Bank
-              </div>
-              <div style={{ fontSize: '9.5px', opacity: 0.55, letterSpacing: '0.8px',
-                            textTransform: 'uppercase', marginTop: '1px' }}>
-                Intelligence Hub
-              </div>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+             onClick={() => setPage('overview')}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px',
+                        background: '#FF3621', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '18px', fontWeight: 900 }}>
+            ◈
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '-0.3px',
+                          color: '#FFFFFF' }}>DBX Bank</div>
+            <div style={{ fontSize: '10px', color: C.sidebarMuted, letterSpacing: '0.04em',
+                          fontWeight: 500 }}>RM INTELLIGENCE PLATFORM</div>
           </div>
         </div>
 
-        {/* Search */}
-        <div style={{ padding: '12px 14px 8px' }}>
-          <input
-            value={searchQuery}
-            onChange={e => handleSearch(e.target.value)}
-            placeholder="Search name or CIF…"
-            style={{ width: '100%', padding: '8px 14px', borderRadius: '20px', border: 'none',
-                     background: 'rgba(255,255,255,0.13)', color: C.white, fontSize: '13px',
-                     outline: 'none', boxSizing: 'border-box',
-                     caretColor: C.white }}
-          />
+        {/* Center: Page breadcrumb */}
+        <div style={{ fontSize: '13px', color: C.sidebarMuted, fontWeight: 500 }}>
+          {page === 'overview' ? 'Customer Overview' : customer ? `${customer.legal_name} · Customer 360` : 'Loading…'}
         </div>
 
-        {/* Customer list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px 12px' }}>
-          {searching && (
-            <div style={{ textAlign: 'center', padding: '16px', opacity: 0.5, fontSize: '12px' }}>
-              Searching…
-            </div>
-          )}
-          {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '16px', opacity: 0.5, fontSize: '12px' }}>
-              No results found
-            </div>
-          )}
-
-          {displayList.map(c => {
-            const s = getSeg(c.lifestyle_segment);
-            const isActive = c.party_id === selectedId;
-            return (
-              <div
-                key={c.party_id}
-                onClick={() => loadCustomer(c.party_id)}
-                style={{
-                  padding: '9px 10px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  marginBottom: '2px',
-                  background: isActive ? 'rgba(255,255,255,0.16)' : 'transparent',
-                  borderLeft: isActive ? `3px solid ${C.red}` : '3px solid transparent',
-                  transition: 'background 0.15s',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center',
-                              justifyContent: 'space-between', gap: '6px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600,
-                                overflow: 'hidden', textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap', flex: 1 }}>
-                    {c.legal_name}
-                  </div>
-                  <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '10px',
-                                 background: s.bg, color: s.textColor, whiteSpace: 'nowrap',
-                                 flexShrink: 0, fontWeight: 600 }}>
-                    {s.label.split(' ')[0]}
-                  </span>
-                </div>
-                <div style={{ fontSize: '11px', opacity: 0.55, marginTop: '2px' }}>
-                  {c.cif_number}
-                  {c.total_deposit_balance_myr
-                    ? ` · ${fmtK(Number(c.total_deposit_balance_myr))}` : ''}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.08)',
-                      fontSize: '10px', opacity: 0.35, textAlign: 'center',
-                      letterSpacing: '0.8px' }}>
-          POWERED BY DATABRICKS
-        </div>
-      </aside>
-
-      {/* ════════════════ MAIN CONTENT ═══════════════════════════════════════ */}
-      <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-
-        {loading ? (
-          /* Loading state */
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        height: '100%', color: C.g600 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', marginBottom: '12px' }}>⏳</div>
-              <div style={{ fontSize: '14px' }}>Loading customer profile…</div>
-            </div>
+        {/* Right controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* MYT clock */}
+          <div style={{ fontSize: '12px', color: C.sidebarMuted, fontWeight: 500,
+                        background: 'rgba(255,255,255,0.07)', padding: '4px 10px', borderRadius: '6px' }}>
+            🕐 {myt}
           </div>
-        ) : !customer ? (
-          /* Empty state */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        justifyContent: 'center', height: '100%', color: C.g600 }}>
-            <div style={{ fontSize: '56px', marginBottom: '16px' }}>🏦</div>
-            <div style={{ fontSize: '21px', fontWeight: 700, color: C.navy, marginBottom: '8px' }}>
-              Alliance Bank Intelligence Hub
-            </div>
-            <div style={{ fontSize: '14px', opacity: 0.65 }}>
-              Select a customer from the sidebar to view their 360° profile and AI recommendations
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-            {/* ── HERO SECTION ─────────────────────────────────────────────── */}
-            <div style={{ background: C.white, borderRadius: '16px', padding: '22px 24px',
-                          boxShadow: '0 2px 12px rgba(27,58,107,0.07)',
-                          display: 'flex', alignItems: 'flex-start', gap: '20px',
-                          flexWrap: 'wrap' }}>
-              {/* Identity */}
-              <div style={{ flex: 1, minWidth: '220px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px',
-                              marginBottom: '10px' }}>
-                  <div style={{ width: '54px', height: '54px', borderRadius: '50%',
-                                background: C.navy, color: C.white, flexShrink: 0,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '20px', fontWeight: 800 }}>
-                    {(customer.legal_name || '?')[0]}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '21px', fontWeight: 800, color: C.navy,
-                                  lineHeight: 1.15 }}>
-                      {customer.legal_name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: C.g600, marginTop: '3px' }}>
-                      CIF {customer.cif_number}
-                      {customer.primary_state ? ` · ${customer.primary_state}` : ''}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {seg && (
-                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px',
-                                   fontWeight: 700, background: seg.bg, color: seg.textColor }}>
-                      {seg.label.toUpperCase()}
-                    </span>
-                  )}
-                  {customer.lifecycle_status && (
-                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px',
-                                   fontWeight: 600,
-                                   background: customer.lifecycle_status === 'active' ? '#DCFCE7' : '#FEE2E2',
-                                   color: customer.lifecycle_status === 'active' ? '#166534' : '#991B1B' }}>
-                      {customer.lifecycle_status.toUpperCase()}
-                    </span>
-                  )}
-                  {customer.kyc_status && (
-                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px',
-                                   fontWeight: 600, background: '#EFF6FF', color: '#1E40AF' }}>
-                      KYC: {String(customer.kyc_status).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* KPI tiles */}
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {[
-                  {
-                    label: 'Total Balance',
-                    value: fmtK(Number(customer.total_deposit_balance_myr || 0)),
-                    sub: 'Deposits',
-                    color: C.navy,
-                  },
-                  {
-                    label: 'CTOS Score',
-                    value: customer.ctos_score || '—',
-                    sub: '/ 850',
-                    color: customer.ctos_score ? ctosColor(Number(customer.ctos_score)) : C.g600,
-                  },
-                  {
-                    label: 'Tenure',
-                    value: `${customer.relationship_tenure_years || 0}yr`,
-                    sub: 'with bank',
-                    color: C.navy,
-                  },
-                  {
-                    label: 'Digital Score',
-                    value: `${customer.digital_maturity_score ?? customer.digital_activity_score ?? 0}/10`,
-                    sub: 'maturity',
-                    color: C.navy,
-                  },
-                ].map(kpi => (
-                  <div key={kpi.label}
-                    style={{ background: C.g50, borderRadius: '12px', padding: '13px 18px',
-                             textAlign: 'center', minWidth: '95px' }}>
-                    <div style={{ fontSize: '20px', fontWeight: 800, color: kpi.color,
-                                  lineHeight: 1.1 }}>
-                      {kpi.value}
-                    </div>
-                    <div style={{ fontSize: '11px', color: C.g600, marginTop: '3px',
-                                  fontWeight: 500 }}>
-                      {kpi.label}
-                    </div>
-                    <div style={{ fontSize: '10px', color: C.g400, marginTop: '1px' }}>
-                      {kpi.sub}
-                    </div>
+          {/* Theme toggle */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowThemeDrop(v => !v)} style={{
+              background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '6px',
+              color: C.sidebarText, padding: '5px 10px', cursor: 'pointer', fontSize: '12px',
+              fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px',
+            }}>
+              {theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '💻'}
+              <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
+              <span style={{ fontSize: '10px' }}>▼</span>
+            </button>
+            {showThemeDrop && (
+              <div style={{ position: 'absolute', right: 0, top: '36px', background: C.card,
+                            border: `1px solid ${C.border}`, borderRadius: '8px', minWidth: '130px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 200 }}>
+                {(['light','dark','system'] as Theme[]).map(t => (
+                  <div key={t} onClick={() => { setTheme(t); setShowThemeDrop(false); }}
+                    style={{ padding: '9px 14px', cursor: 'pointer', fontSize: '13px',
+                             color: theme === t ? C.red : C.text, fontWeight: theme === t ? 700 : 400,
+                             display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {t === 'light' ? '☀️' : t === 'dark' ? '🌙' : '💻'}
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* ── TWO COLUMN ───────────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '18px',
-                          alignItems: 'start' }}>
-
-              {/* ── LEFT: Customer 360 Tabs ─────────────────────────────────── */}
-              <div style={{ background: C.white, borderRadius: '16px',
-                            boxShadow: '0 2px 12px rgba(27,58,107,0.06)', overflow: 'hidden' }}>
-                {/* Tab bar */}
-                <div style={{ display: 'flex', borderBottom: `2px solid ${C.g100}`,
-                              overflowX: 'auto' }}>
-                  {['Profile', 'Financial Products', 'Credit', 'Digital Activity'].map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      style={{
-                        padding: '13px 18px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: activeTab === tab ? 700 : 500,
-                        fontSize: '13px',
-                        background: 'transparent',
-                        color: activeTab === tab ? C.navy : C.g600,
-                        borderBottom: `2px solid ${activeTab === tab ? C.navy : 'transparent'}`,
-                        marginBottom: '-2px',
-                        whiteSpace: 'nowrap',
-                        transition: 'color 0.12s',
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab content */}
-                <div style={{ padding: '20px' }}>
-
-                  {/* Profile */}
-                  {activeTab === 'Profile' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <Row label="Lifestyle Segment" value={seg?.label || '—'} />
-                      <Row label="Age"
-                        value={customer.age ? `${customer.age} years` : '—'} />
-                      <Row label="Annual Income"
-                        value={customer.annual_income_amount
-                          ? fmtMYR(Number(customer.annual_income_amount)) : '—'} />
-                      <Row label="Employment"
-                        value={customer.employment_status?.replace(/_/g, ' ') || '—'} />
-                      <Row label="Primary State"
-                        value={customer.primary_state || '—'} />
-                      <Row label="Marital Status"
-                        value={customer.marital_status || '—'} />
-                      <Row label="Dependents"
-                        value={customer.number_of_dependents ?? '—'} />
-                      <Row label="Shariah Preference"
-                        value={customer.is_shariah_preferred ? 'Yes' : 'No'} />
-                      <Row label="NPS Score"
-                        value={customer.nps_score != null
-                          ? `${customer.nps_score}/10` : '—'} />
-                      <Row label="Risk Rating"
-                        value={customer.risk_rating?.toUpperCase() || '—'} />
-                    </div>
-                  )}
-
-                  {/* Financial Products */}
-                  {activeTab === 'Financial Products' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <Row label="Deposit Balance"
-                        value={customer.total_deposit_balance_myr
-                          ? fmtMYR(Number(customer.total_deposit_balance_myr)) : '—'} />
-                      <Row label="Loan Balance"
-                        value={customer.total_loan_outstanding_myr
-                          ? fmtMYR(Number(customer.total_loan_outstanding_myr)) : '—'} />
-                      <Row label="Credit Card"
-                        value={customer.has_credit_card ? '✅ Yes' : '❌ No'} />
-                      <Row label="Home Loan"
-                        value={customer.has_home_loan ? '✅ Yes' : '❌ No'} />
-                      <Row label="Personal Loan"
-                        value={customer.has_personal_loan ? '✅ Yes' : '❌ No'} />
-                      <Row label="Monthly Commitment"
-                        value={customer.monthly_loan_commitment_myr
-                          ? fmtMYR(Number(customer.monthly_loan_commitment_myr)) : '—'} />
-                      <Row label="Current Account"
-                        value={customer.has_current_account ? '✅ Yes' : '❌ No'} />
-                      <Row label="Savings Account"
-                        value={customer.has_savings_account ? '✅ Yes' : '❌ No'} />
-                      <Row label="Fixed Deposit"
-                        value={customer.has_fixed_deposit ? '✅ Yes' : '❌ No'} />
-                      <Row label="Total Accounts"
-                        value={customer.num_accounts ?? '—'} />
-                    </div>
-                  )}
-
-                  {/* Credit */}
-                  {activeTab === 'Credit' && (
-                    <div>
-                      {/* CTOS gauge */}
-                      <div style={{ marginBottom: '16px', padding: '16px', background: C.g50,
-                                    borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between',
-                                      alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontWeight: 700, color: C.navy, fontSize: '14px' }}>
-                            CTOS Score
-                          </span>
-                          <span style={{ fontWeight: 800, fontSize: '22px',
-                                         color: ctosColor(Number(customer.ctos_score || 0)) }}>
-                            {customer.ctos_score || '—'}
-                          </span>
-                        </div>
-                        <div style={{ background: C.g200, borderRadius: '6px', height: '10px',
-                                      overflow: 'hidden' }}>
-                          <div style={{
-                            width: `${Math.min(Number(customer.ctos_score || 0) / 850 * 100, 100)}%`,
-                            background: ctosColor(Number(customer.ctos_score || 0)),
-                            height: '100%', borderRadius: '6px', transition: 'width 0.8s ease',
-                          }} />
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between',
-                                      fontSize: '10px', color: C.g400, marginTop: '4px' }}>
-                          <span>0</span>
-                          <span style={{ color: '#DC2626' }}>600</span>
-                          <span style={{ color: '#D97706' }}>700</span>
-                          <span>850</span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <Row label="CCRIS Status"
-                          value={customer.ccris_status
-                            ? String(customer.ccris_status).toUpperCase() : '—'} />
-                        <Row label="Payment Conduct"
-                          value={customer.payment_conduct_12m ?? '—'} />
-                        <Row label="Debt-to-Income"
-                          value={customer.debt_to_income_ratio != null
-                            ? `${(Number(customer.debt_to_income_ratio) * 100).toFixed(1)}%` : '—'} />
-                        <Row label="Legal Cases"
-                          value={customer.legal_cases_count ?? '—'}
-                          valueColor={Number(customer.legal_cases_count) > 0 ? '#DC2626' : undefined} />
-                        <Row label="Bankruptcy"
-                          value={customer.bankruptcy_status || '—'} />
-                        <Row label="Bureau Inquiries (6m)"
-                          value={customer.inquiry_count_last_6m ?? '—'} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Digital Activity */}
-                  {activeTab === 'Digital Activity' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <Row label="Mobile Sessions (30d)"
-                        value={customer.mobile_sessions_30d ?? '—'} />
-                      <Row label="Product Views (30d)"
-                        value={customer.product_views_last_30d ?? '—'} />
-                      <Row label="Last Viewed Product"
-                        value={customer.last_product_category_viewed
-                          ? String(customer.last_product_category_viewed).replace(/_/g, ' ')
-                          : '—'} />
-                      <Row label="Telco Carrier"
-                        value={customer.telco_carrier || '—'} />
-                      <Row label="Telco ARPU"
-                        value={customer.telco_arpu_myr
-                          ? `MYR ${customer.telco_arpu_myr}` : '—'} />
-                      <Row label="Data Consumption"
-                        value={customer.telco_data_consumption_gb_monthly
-                          ? `${customer.telco_data_consumption_gb_monthly} GB/mo` : '—'} />
-                      <Row label="Digital Enrolled"
-                        value={customer.digital_banking_enrollment_flag ? '✅ Yes' : '❌ No'} />
-                      <Row label="Mobile App"
-                        value={customer.mobile_app_user_flag ? '✅ Yes' : '❌ No'} />
-                      <Row label="Digital Maturity"
-                        value={customer.digital_maturity_score != null
-                          ? `${customer.digital_maturity_score}/10` : '—'} />
-                      <Row label="Digital Activity"
-                        value={customer.digital_activity_score != null
-                          ? `${customer.digital_activity_score}/10` : '—'} />
-                    </div>
-                  )}
-
-                </div>
-              </div>
-
-              {/* ── RIGHT: AI Recommendations ──────────────────────────────── */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ background: C.white, borderRadius: '16px', padding: '20px',
-                              boxShadow: '0 2px 12px rgba(27,58,107,0.06)' }}>
-                  <div style={{ fontWeight: 700, fontSize: '15px', color: C.navy,
-                                marginBottom: '2px' }}>
-                    🎯 Next Best Product
-                  </div>
-                  <div style={{ fontSize: '11px', color: C.g400, marginBottom: '16px' }}>
-                    {recs?.live ? 'Live · XGBoost model serving' : 'Batch · XGBoost pre-scored'}
-                  </div>
-
-                  {recs ? (
-                    <>
-                      {/* Recommendation cards */}
-                      {[
-                        { rank: 1, product: recs.recommendation_1, conf: recs.confidence_1 },
-                        { rank: 2, product: recs.recommendation_2, conf: recs.confidence_2 },
-                      ].map(({ rank, product, conf }) => {
-                        const p = getProd(product);
-                        return (
-                          <div
-                            key={rank}
-                            style={{
-                              border: `1.5px solid ${rank === 1 ? C.navy : C.g200}`,
-                              borderRadius: '12px',
-                              padding: '14px',
-                              marginBottom: '10px',
-                              background: rank === 1 ? '#EEF2FF' : C.white,
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between',
-                                          alignItems: 'flex-start', marginBottom: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <span style={{ fontSize: '24px', lineHeight: 1 }}>{p.icon}</span>
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: '14px',
-                                                color: C.navy }}>
-                                    {p.label}
-                                  </div>
-                                  <div style={{ fontSize: '10px', color: C.g400,
-                                                marginTop: '1px' }}>
-                                    #{rank} Recommendation
-                                  </div>
-                                </div>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '22px', fontWeight: 800,
-                                              color: p.color, lineHeight: 1 }}>
-                                  {conf}%
-                                </div>
-                                <div style={{ fontSize: '10px', color: C.g400 }}>confidence</div>
-                              </div>
-                            </div>
-                            {/* Confidence bar */}
-                            <div style={{ background: C.g200, borderRadius: '4px', height: '5px', marginBottom: '10px' }}>
-                              <div style={{ width: `${conf}%`, background: p.color,
-                                            height: '5px', borderRadius: '4px',
-                                            transition: 'width 0.8s ease' }} />
-                            </div>
-                            {/* Why button */}
-                            <button
-                              onClick={() => explainRec(rank as 1|2)}
-                              style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px',
-                                       border: `1px solid ${C.navy}`, background: 'transparent',
-                                       color: C.navy, cursor: 'pointer', fontWeight: 600 }}>
-                              🤖 Why this product?
-                            </button>
-                          </div>
-                        );
-                      })}
-
-                      {liveError && (
-                        <div style={{ fontSize: '12px', color: '#DC2626', marginBottom: '8px',
-                                      padding: '8px', background: '#FEF2F2', borderRadius: '6px' }}>
-                          {liveError}
-                        </div>
-                      )}
-
-                      {/* Live Score button */}
-                      <button
-                        onClick={liveScore}
-                        disabled={liveLoading}
-                        style={{
-                          width: '100%', padding: '10px',
-                          background: liveLoading ? C.g400 : C.navy,
-                          color: C.white, border: 'none', borderRadius: '8px',
-                          cursor: liveLoading ? 'not-allowed' : 'pointer',
-                          fontWeight: 600, fontSize: '13px', marginBottom: '8px',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        {liveLoading ? '⏳ Scoring…' : '⚡ Live Score'}
-                      </button>
-
-                      <div style={{ height: '1px', background: C.g100, margin: '8px 0' }} />
-
-                      {/* Draft Email button */}
-                      <button
-                        onClick={draftEmail}
-                        style={{
-                          width: '100%', padding: '10px',
-                          background: C.red, color: C.white,
-                          border: 'none', borderRadius: '8px',
-                          cursor: 'pointer', fontWeight: 600, fontSize: '13px',
-                          transition: 'opacity 0.15s',
-                        }}
-                      >
-                        ✉️ Draft Email
-                      </button>
-                    </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '24px', color: C.g600,
-                                  fontSize: '13px' }}>
-                      Loading recommendations…
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
+            )}
           </div>
+
+          {/* RM Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowRmDrop(v => !v)} style={{
+              background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '6px',
+              color: C.sidebarText, padding: '5px 12px', cursor: 'pointer',
+              fontSize: '12px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px',
+            }}>
+              <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: C.red,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '10px', fontWeight: 700, color: '#fff' }}>
+                {initials(rm)}
+              </div>
+              <span style={{ maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {rm.split(' ').slice(0,2).join(' ')}
+              </span>
+              <span style={{ fontSize: '10px' }}>▼</span>
+            </button>
+            {showRmDrop && (
+              <div style={{ position: 'absolute', right: 0, top: '36px', background: C.card,
+                            border: `1px solid ${C.border}`, borderRadius: '8px', minWidth: '240px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 200 }}>
+                <div style={{ padding: '8px 12px', fontSize: '10px', color: C.muted,
+                              fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                              borderBottom: `1px solid ${C.border}` }}>RELATIONSHIP MANAGERS</div>
+                {RM_LIST.map(name => (
+                  <div key={name} onClick={() => { setRm(name); setShowRmDrop(false); }}
+                    style={{ padding: '9px 14px', cursor: 'pointer', fontSize: '13px',
+                             color: rm === name ? C.red : C.text, fontWeight: rm === name ? 700 : 400,
+                             display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%',
+                                  background: rm === name ? C.red : C.border, flexShrink: 0,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '10px', fontWeight: 700,
+                                  color: rm === name ? '#fff' : C.muted }}>
+                      {initials(name)}
+                    </div>
+                    {name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Dismiss dropdowns on outside click */}
+      {(showRmDrop || showThemeDrop) && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+             onClick={() => { setShowRmDrop(false); setShowThemeDrop(false); }} />
+      )}
+
+      {/* ════════════════ PAGE CONTENT ══════════════════════════════════════ */}
+      <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px' }}>
+
+        {/* ── OVERVIEW PAGE ─────────────────────────────────────────────── */}
+        {page === 'overview' && (
+          <>
+            {/* KPI Row */}
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <KpiCard label="Active Customers" value={loadingList ? '…' : kpis.count.toLocaleString()}
+                       sub="In portfolio" C={C} />
+              <KpiCard label="Total Portfolio Value" value={loadingList ? '…' : fmtMYR(kpis.totalBal)}
+                       sub="Deposit balances" C={C} />
+              <KpiCard label="Avg CTOS Score" value={loadingList ? '…' : `${kpis.avgCtos}/850`}
+                       sub="Portfolio average" C={C} />
+              <KpiCard label="With AI Recommendations" value={loadingList ? '…' : `${kpis.recPct}%`}
+                       sub="Actionable insights" C={C} />
+            </div>
+
+            {/* Filter bar */}
+            <div style={{ ...cardStyle, display: 'flex', gap: '12px', marginBottom: '16px',
+                          alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                value={searchQ}
+                onChange={e => { setSearchQ(e.target.value); setPage_(1); }}
+                placeholder="🔍  Search by name or CIF…"
+                style={{ flex: '1 1 220px', padding: '8px 12px', borderRadius: '8px',
+                         border: `1px solid ${C.inputBorder}`, background: C.input,
+                         color: C.text, fontSize: '13px', outline: 'none' }}
+              />
+              <select value={segFilter} onChange={e => { setSegFilter(e.target.value); setPage_(1); }}
+                style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${C.inputBorder}`,
+                         background: C.input, color: C.text, fontSize: '13px', cursor: 'pointer' }}>
+                <option value="">All Segments</option>
+                {['mass_market','affluent','high_net_worth','private_banking','premier'].map(s => (
+                  <option key={s} value={s}>{getSeg(s).label}</option>
+                ))}
+              </select>
+              <select value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage_(1); }}
+                style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${C.inputBorder}`,
+                         background: C.input, color: C.text, fontSize: '13px', cursor: 'pointer' }}>
+                <option value="">All States</option>
+                {states.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div style={{ fontSize: '12px', color: C.muted, whiteSpace: 'nowrap' }}>
+                {filtered.length.toLocaleString()} customers
+              </div>
+            </div>
+
+            {/* Table */}
+            <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: C.tableHeader, borderBottom: `2px solid ${C.tableBorder}` }}>
+                      {[
+                        ['Customer', null],
+                        ['Segment', null],
+                        ['State', null],
+                        ['CTOS Score', 'ctos_score'],
+                        ['Portfolio Balance', 'total_deposit_balance_myr'],
+                        ['Tenure', 'relationship_tenure_years'],
+                        ['Next Best Product', 'confidence_1'],
+                        ['Actions', null],
+                      ].map(([label, field]) => (
+                        <th key={label as string}
+                          onClick={field ? () => toggleSort(field as SortField) : undefined}
+                          style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600,
+                                   color: C.muted, fontSize: '11px', textTransform: 'uppercase',
+                                   letterSpacing: '0.05em', whiteSpace: 'nowrap',
+                                   cursor: field ? 'pointer' : 'default', userSelect: 'none' }}>
+                          {label as string}{field ? sortIcon(field as SortField) : ''}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingList && Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i}>
+                        {Array.from({ length: 8 }).map((__, j) => (
+                          <td key={j} style={{ padding: '12px 16px' }}>
+                            <div style={{ height: '14px', borderRadius: '6px',
+                                          background: C.border, width: j===0?'160px':'80px',
+                                          animation: 'pulse 1.5s infinite' }} />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {!loadingList && pageData.length === 0 && (
+                      <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
+                        {customers.length === 0 ? 'No customer data available. Ensure Part A pipeline has completed.' : 'No customers match the current filters.'}
+                      </td></tr>
+                    )}
+                    {!loadingList && pageData.map((c, i) => {
+                      const seg  = getSeg(c.lifestyle_segment);
+                      const prod = getProd(c.recommendation_1);
+                      const conf = parseFloat(c.confidence_1) || 0;
+                      return (
+                        <tr key={c.party_id}
+                          style={{ borderBottom: `1px solid ${C.tableBorder}`,
+                                   background: i%2===0 ? C.card : C.bg,
+                                   transition: 'background 0.1s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
+                          onMouseLeave={e => (e.currentTarget.style.background = i%2===0 ? C.card : C.bg)}>
+                          {/* Customer */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '36px', height: '36px', borderRadius: '50%',
+                                            background: C.red, flexShrink: 0,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '12px', fontWeight: 700, color: '#fff' }}>
+                                {initials(c.legal_name)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: C.text }}>{c.legal_name}</div>
+                                <div style={{ fontSize: '11px', color: C.muted }}>{c.cif_number}</div>
+                              </div>
+                            </div>
+                          </td>
+                          {/* Segment */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <Badge label={seg.label} bg={seg.bg} text={seg.text} />
+                          </td>
+                          {/* State */}
+                          <td style={{ padding: '12px 16px', color: C.muted, fontSize: '12px' }}>
+                            {c.primary_state || '—'}
+                          </td>
+                          {/* CTOS */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ fontWeight: 700, color: ctosColor(c.ctos_score, C) }}>
+                              {c.ctos_score || '—'}
+                            </span>
+                          </td>
+                          {/* Balance */}
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: C.text, whiteSpace: 'nowrap' }}>
+                            {fmtMYR(c.total_deposit_balance_myr)}
+                          </td>
+                          {/* Tenure */}
+                          <td style={{ padding: '12px 16px', color: C.muted }}>
+                            {c.relationship_tenure_years ? `${parseFloat(c.relationship_tenure_years).toFixed(1)} yrs` : '—'}
+                          </td>
+                          {/* Recommendation */}
+                          <td style={{ padding: '12px 16px' }}>
+                            {c.recommendation_1 && c.recommendation_1 !== 'PENDING' ? (
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px',
+                                              fontWeight: 600, color: prod.color, fontSize: '12px' }}>
+                                  <span>{prod.icon}</span>
+                                  <span>{prod.label}</span>
+                                </div>
+                                {conf > 0 && (
+                                  <div style={{ marginTop: '4px' }}>
+                                    <div style={{ background: C.border, borderRadius: '3px', height: '3px', width: '80px' }}>
+                                      <div style={{ width: `${Math.min(conf,100)}%`, background: prod.color,
+                                                    height: '3px', borderRadius: '3px' }} />
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: C.muted, marginTop: '1px' }}>{Math.round(conf)}%</div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: C.subtle, fontSize: '12px' }}>—</span>
+                            )}
+                          </td>
+                          {/* Action */}
+                          <td style={{ padding: '12px 16px' }}>
+                            <button onClick={() => openDetail(c.party_id)} style={{
+                              padding: '6px 14px', borderRadius: '7px', border: 'none',
+                              background: C.red, color: '#fff', fontSize: '12px', fontWeight: 600,
+                              cursor: 'pointer', whiteSpace: 'nowrap',
+                            }}>View 360 →</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',
+                              gap: '8px', padding: '16px', borderTop: `1px solid ${C.tableBorder}` }}>
+                  <button onClick={() => setPage_(p => Math.max(1, p-1))} disabled={page_===1}
+                    style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${C.border}`,
+                             background: C.card, color: C.text, cursor: page_===1?'not-allowed':'pointer',
+                             opacity: page_===1?0.4:1, fontSize: '13px' }}>← Prev</button>
+                  <span style={{ color: C.muted, fontSize: '13px' }}>
+                    Page {page_} of {totalPages} · {filtered.length} customers
+                  </span>
+                  <button onClick={() => setPage_(p => Math.min(totalPages, p+1))} disabled={page_===totalPages}
+                    style={{ padding: '5px 12px', borderRadius: '6px', border: `1px solid ${C.border}`,
+                             background: C.card, color: C.text, cursor: page_===totalPages?'not-allowed':'pointer',
+                             opacity: page_===totalPages?0.4:1, fontSize: '13px' }}>Next →</button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── DETAIL PAGE ───────────────────────────────────────────────── */}
+        {page === 'detail' && (
+          <>
+            {/* Breadcrumb */}
+            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => setPage('overview')} style={{
+                background: 'none', border: 'none', color: C.red, cursor: 'pointer',
+                fontSize: '14px', fontWeight: 600, padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+              }}>← Customer Overview</button>
+              {customer && (
+                <><span style={{ color: C.muted }}>›</span>
+                <span style={{ color: C.muted, fontSize: '14px' }}>{customer.legal_name}</span></>
+              )}
+            </div>
+
+            {loadingDetail && (
+              <div style={{ textAlign: 'center', padding: '80px', color: C.muted }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+                Loading customer 360…
+              </div>
+            )}
+
+            {!loadingDetail && customer && (
+              <>
+                {/* Hero Card */}
+                <div style={{ ...cardStyle, marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                                gap: '20px', flexWrap: 'wrap' }}>
+                    {/* Identity */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: C.red,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '22px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                        {initials(customer.legal_name)}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '22px', fontWeight: 800, color: C.text, marginBottom: '4px' }}>
+                          {customer.legal_name}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: C.muted }}>{customer.cif_number}</span>
+                          <span style={{ fontSize: '12px', color: C.muted }}>·</span>
+                          <span style={{ fontSize: '12px', color: C.muted }}>{customer.party_id}</span>
+                          <Badge label={customer.lifecycle_status || 'unknown'}
+                                 bg={customer.lifecycle_status === 'active' ? '#DCFCE7' : '#FEE2E2'}
+                                 text={customer.lifecycle_status === 'active' ? '#16A34A' : '#DC2626'} />
+                          <Badge label={`KYC: ${customer.kyc_status || '—'}`}
+                                 bg={customer.kyc_status === 'verified' ? '#DBEAFE' : '#FEF9C3'}
+                                 text={customer.kyc_status === 'verified' ? '#1D4ED8' : '#A16207'} />
+                          {(() => { const s = getSeg(customer.lifestyle_segment); return <Badge label={s.label} bg={s.bg} text={s.text} />; })()}
+                        </div>
+                      </div>
+                    </div>
+                    {/* KPI tiles */}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Total Balance', value: fmtMYRFull(customer.total_deposit_balance_myr) },
+                        { label: 'CTOS Score', value: customer.ctos_score ? `${customer.ctos_score}/850` : '—',
+                          color: ctosColor(customer.ctos_score, C) },
+                        { label: 'Tenure', value: customer.relationship_tenure_years ? `${parseFloat(customer.relationship_tenure_years).toFixed(1)} yrs` : '—' },
+                        { label: 'Digital Score', value: customer.digital_maturity_score ? `${customer.digital_maturity_score}/10` : '—' },
+                      ].map(k => (
+                        <div key={k.label} style={{ background: C.bg, border: `1px solid ${C.border}`,
+                                                     borderRadius: '10px', padding: '12px 16px', minWidth: '130px' }}>
+                          <div style={{ fontSize: '10px', color: C.muted, fontWeight: 600, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '4px' }}>{k.label}</div>
+                          <div style={{ fontSize: '18px', fontWeight: 800, color: k.color || C.text }}>{k.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px',
+                              alignItems: 'start' }}>
+
+                  {/* LEFT: 360 Tabs */}
+                  <div style={cardStyle}>
+                    {/* Tab bar */}
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '20px',
+                                  padding: '4px', background: C.bg, borderRadius: '10px', width: 'fit-content' }}>
+                      {['Profile','Financial','Credit','Digital'].map(t => (
+                        <Tab key={t} label={t} active={detailTab===t} onClick={() => setDetailTab(t)} C={C} />
+                      ))}
+                    </div>
+
+                    {/* Profile Tab */}
+                    {detailTab === 'Profile' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Personal</div>
+                          <InfoRow label="Age" value={customer.age ? `${customer.age} years` : '—'} C={C} />
+                          <InfoRow label="Gender" value={customer.gender} C={C} />
+                          <InfoRow label="Marital Status" value={customer.marital_status} C={C} />
+                          <InfoRow label="Dependents" value={customer.number_of_dependents} C={C} />
+                          <InfoRow label="Education" value={customer.education_level} C={C} />
+                          <InfoRow label="Employment" value={customer.employment_status} C={C} />
+                          <InfoRow label="Employer" value={customer.employer_name} C={C} />
+                          <InfoRow label="Annual Income" value={fmtMYRFull(customer.annual_income_amount)} C={C} />
+                          <InfoRow label="Net Worth Band" value={customer.net_worth_band} C={C} />
+                          <InfoRow label="Shariah Preferred" value={customer.is_shariah_preferred ? 'Yes ✓' : 'No'} C={C} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Relationship</div>
+                          <InfoRow label="Primary State" value={customer.primary_state} C={C} />
+                          <InfoRow label="Language" value={customer.preferred_language_code} C={C} />
+                          <InfoRow label="Contact Method" value={customer.preferred_contact_method} C={C} />
+                          <InfoRow label="Tenure" value={customer.relationship_tenure_years ? `${parseFloat(customer.relationship_tenure_years).toFixed(1)} years` : '—'} C={C} />
+                          <InfoRow label="Lifecycle" value={customer.lifecycle_status} C={C} />
+                          <InfoRow label="Risk Rating" value={customer.risk_rating} C={C} />
+                          <InfoRow label="KYC Status" value={customer.kyc_status} C={C} />
+                          <InfoRow label="Mobile App User" value={customer.mobile_app_user_flag ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="NPS Score" value={customer.nps_score} C={C} />
+                          <InfoRow label="Marketing Consent" value={customer.marketing_consent_flag ? 'Yes' : 'No'} C={C} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Financial Tab */}
+                    {detailTab === 'Financial' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Deposit Accounts</div>
+                          <InfoRow label="Num. Accounts" value={customer.num_accounts} C={C} />
+                          <InfoRow label="Total Balance" value={fmtMYRFull(customer.total_deposit_balance_myr)} C={C} />
+                          <InfoRow label="Has Current Account" value={customer.has_current_account ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="Has Savings Account" value={customer.has_savings_account ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="Has Fixed Deposit" value={customer.has_fixed_deposit ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="Has Credit Card" value={customer.has_credit_card ? 'Yes' : 'No'} C={C} />
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', margin: '16px 0 12px' }}>Loans & Facilities</div>
+                          <InfoRow label="Num. Loan Facilities" value={customer.num_loan_facilities} C={C} />
+                          <InfoRow label="Total Loan Outstanding" value={fmtMYRFull(customer.total_loan_outstanding_myr)} C={C} />
+                          <InfoRow label="Monthly Commitment" value={fmtMYRFull(customer.monthly_loan_commitment_myr)} C={C} />
+                          <InfoRow label="Has Home Loan" value={customer.has_home_loan ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="Has Personal Loan" value={customer.has_personal_loan ? 'Yes' : 'No'} C={C} />
+                          <InfoRow label="Has Hire Purchase" value={customer.has_hire_purchase ? 'Yes' : 'No'} C={C} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Transactions (30 days)</div>
+                          <InfoRow label="Transaction Count" value={customer.txn_count_30d} C={C} />
+                          <InfoRow label="Avg Transaction" value={fmtMYRFull(customer.avg_txn_amount_myr)} C={C} />
+                          <InfoRow label="Total Debit" value={fmtMYRFull(customer.total_debit_30d_myr)} C={C} />
+                          <InfoRow label="Total Credit" value={fmtMYRFull(customer.total_credit_30d_myr)} C={C} />
+                          <InfoRow label="Card Spend" value={fmtMYRFull(customer.card_spend_30d_myr)} C={C} />
+                          <InfoRow label="Overseas Transactions" value={customer.overseas_txn_flag ? 'Yes' : 'No'} C={C} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Credit Tab */}
+                    {detailTab === 'Credit' && (
+                      <div>
+                        {/* CTOS Score Gauge */}
+                        <div style={{ marginBottom: '20px', padding: '16px', background: C.bg,
+                                      borderRadius: '10px', border: `1px solid ${C.border}` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '14px', color: C.text }}>CTOS Score</span>
+                            <span style={{ fontWeight: 800, fontSize: '22px',
+                                           color: ctosColor(customer.ctos_score, C) }}>
+                              {customer.ctos_score || '—'}<span style={{ fontSize: '14px', fontWeight: 500, color: C.muted }}>/850</span>
+                            </span>
+                          </div>
+                          <div style={{ background: C.border, borderRadius: '4px', height: '8px', position: 'relative' }}>
+                            <div style={{ position: 'absolute', left: 0, height: '100%', borderRadius: '4px',
+                                          width: `${Math.min(100, Math.max(0, ((parseInt(customer.ctos_score)||0)-300)/5.5))}%`,
+                                          background: ctosColor(customer.ctos_score, C),
+                                          transition: 'width 1s ease' }} />
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px',
+                                        fontSize: '10px', color: C.muted }}>
+                            <span>300 Poor</span><span>600 Fair</span><span>700 Good</span><span>850 Excellent</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                          <div>
+                            <InfoRow label="CCRIS Status" value={customer.ccris_status} C={C} />
+                            <InfoRow label="Payment Conduct 12M" value={customer.payment_conduct_12m} C={C} />
+                            <InfoRow label="Total Credit Facilities" value={customer.total_credit_facilities} C={C} />
+                            <InfoRow label="Credit Bureau Count" value={customer.credit_card_bureau_count} C={C} />
+                            <InfoRow label="Inquiry Count (6M)" value={customer.inquiry_count_last_6m} C={C} />
+                          </div>
+                          <div>
+                            <InfoRow label="Legal Cases" value={customer.legal_cases_count} C={C} />
+                            <InfoRow label="Bankruptcy Status" value={customer.bankruptcy_status} C={C} />
+                            <InfoRow label="KB Monthly Commitment" value={fmtMYRFull(customer.kb_monthly_commitment_myr)} C={C} />
+                            <InfoRow label="Debt-to-Income Ratio"
+                              value={customer.annual_income_amount && customer.monthly_loan_commitment_myr
+                                ? `${((parseFloat(customer.monthly_loan_commitment_myr)*12/parseFloat(customer.annual_income_amount))*100).toFixed(1)}%`
+                                : '—'} C={C} />
+                            <InfoRow label="Is PEP" value={customer.is_pep ? 'Yes ⚠️' : 'No'} C={C} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Digital Tab */}
+                    {detailTab === 'Digital' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Digital Banking</div>
+                          <InfoRow label="Digital Enrollment" value={customer.digital_banking_enrollment_flag ? 'Yes ✓' : 'No'} C={C} />
+                          <InfoRow label="Mobile App User" value={customer.mobile_app_user_flag ? 'Yes ✓' : 'No'} C={C} />
+                          <InfoRow label="Mobile Sessions (30d)" value={customer.mobile_sessions_30d} C={C} />
+                          <InfoRow label="Product Views (30d)" value={customer.product_views_last_30d} C={C} />
+                          <InfoRow label="Last Product Viewed" value={customer.last_product_category_viewed} C={C} />
+                          {/* Digital score bar */}
+                          <div style={{ marginTop: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '12px', color: C.muted }}>Digital Maturity Score</span>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: C.text }}>
+                                {customer.digital_maturity_score || '—'}/10
+                              </span>
+                            </div>
+                            <div style={{ background: C.border, borderRadius: '4px', height: '6px' }}>
+                              <div style={{ width: `${(parseFloat(customer.digital_maturity_score)||0)*10}%`,
+                                            background: C.blue, height: '6px', borderRadius: '4px', transition: 'width 0.8s' }} />
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: C.muted, textTransform: 'uppercase',
+                                        letterSpacing: '0.06em', marginBottom: '12px' }}>Telco Signals</div>
+                          <InfoRow label="Telco ARPU" value={fmtMYRFull(customer.telco_arpu_myr)} C={C} />
+                          <InfoRow label="Data Consumption" value={customer.telco_data_consumption_gb_monthly ? `${parseFloat(customer.telco_data_consumption_gb_monthly).toFixed(1)} GB/mo` : '—'} C={C} />
+                          <InfoRow label="Digital Activity Score" value={customer.digital_activity_score} C={C} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* RIGHT: AI Recommendations */}
+                  <div style={{ ...cardStyle, position: 'sticky', top: '72px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '15px', color: C.text, marginBottom: '2px' }}>
+                      🎯 AI Recommendations
+                    </div>
+                    <div style={{ fontSize: '11px', color: C.muted, marginBottom: '16px' }}>
+                      {recs?.live ? '⚡ Live · XGBoost model serving' : '🗄 Batch · pre-scored by XGBoost'}
+                    </div>
+
+                    {recs ? (
+                      <>
+                        {/* Rec cards */}
+                        {[
+                          { rank: 1, product: recs.recommendation_1, conf: parseFloat(recs.confidence_1)||0 },
+                          { rank: 2, product: recs.recommendation_2, conf: parseFloat(recs.confidence_2)||0 },
+                        ].map(({ rank, product, conf }) => {
+                          const p = getProd(product);
+                          return (
+                            <div key={rank} style={{
+                              border: `2px solid ${rank===1 ? C.red : C.border}`,
+                              borderRadius: '12px', padding: '14px', marginBottom: '10px',
+                              background: rank===1 ? (C === DARK ? '#1F1515' : '#FFF8F7') : C.bg,
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between',
+                                            alignItems: 'flex-start', marginBottom: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{ fontSize: '28px' }}>{p.icon}</span>
+                                  <div>
+                                    <div style={{ fontWeight: 700, fontSize: '14px', color: C.text }}>{p.label}</div>
+                                    <div style={{ fontSize: '10px', color: C.muted }}>#{rank} Recommendation</div>
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: '24px', fontWeight: 800, color: p.color, lineHeight: 1 }}>
+                                    {Math.round(conf)}%
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: C.muted }}>confidence</div>
+                                </div>
+                              </div>
+                              <div style={{ background: C.border, borderRadius: '4px', height: '4px', marginBottom: '10px' }}>
+                                <div style={{ width: `${Math.min(conf,100)}%`, background: p.color,
+                                              height: '4px', borderRadius: '4px', transition: 'width 0.8s' }} />
+                              </div>
+                              <button onClick={() => explainRec(rank as 1|2)} style={{
+                                fontSize: '11px', padding: '5px 12px', borderRadius: '6px',
+                                border: `1px solid ${C.border}`, background: 'transparent',
+                                color: C.text, cursor: 'pointer', fontWeight: 600,
+                              }}>🤖 Why this product?</button>
+                            </div>
+                          );
+                        })}
+
+                        {liveError && (
+                          <div style={{ fontSize: '12px', color: C.crimson, padding: '8px 12px',
+                                        background: '#FEF2F2', borderRadius: '6px', marginBottom: '10px' }}>
+                            {liveError}
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                          <button onClick={liveScore} disabled={liveLoading} style={{
+                            flex: 1, padding: '9px', borderRadius: '8px',
+                            border: `1px solid ${C.border}`, background: 'transparent',
+                            color: C.text, cursor: liveLoading ? 'wait' : 'pointer',
+                            fontSize: '13px', fontWeight: 600,
+                          }}>{liveLoading ? '⏳ Scoring…' : '⚡ Live Score'}</button>
+                          <button onClick={draftEmail} style={{
+                            flex: 1, padding: '9px', borderRadius: '8px', border: 'none',
+                            background: C.red, color: '#fff', cursor: 'pointer',
+                            fontSize: '13px', fontWeight: 600,
+                          }}>✉️ Draft Email</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ padding: '24px', textAlign: 'center', color: C.muted, fontSize: '13px' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+                        Recommendations not yet available.<br />
+                        <span style={{ fontSize: '12px' }}>Run Part B pipeline to generate batch scores,<br />or click Live Score below.</span>
+                        <div style={{ marginTop: '16px' }}>
+                          <button onClick={liveScore} disabled={liveLoading} style={{
+                            padding: '9px 20px', borderRadius: '8px', border: 'none',
+                            background: C.red, color: '#fff', cursor: liveLoading ? 'wait' : 'pointer',
+                            fontSize: '13px', fontWeight: 600,
+                          }}>{liveLoading ? '⏳ Scoring…' : '⚡ Score Now'}</button>
+                        </div>
+                        {liveError && <div style={{ color: C.crimson, fontSize: '12px', marginTop: '8px' }}>{liveError}</div>}
+                      </div>
+                    )}
+
+                    {/* GLM badge */}
+                    <div style={{ marginTop: '12px', padding: '8px', borderRadius: '6px',
+                                  background: C.bg, border: `1px solid ${C.border}`, fontSize: '11px',
+                                  color: C.muted, textAlign: 'center' }}>
+                      Powered by Databricks · XGBoost + GLM 5.2 via FMAPI
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
       </main>
 
       {/* ════════════════ EMAIL MODAL ════════════════════════════════════════ */}
       {showEmail && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.52)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300,
-          }}
-          onClick={e => { if (e.target === e.currentTarget) setShowEmail(false); }}
-        >
-          <div style={{ background: C.white, borderRadius: '20px', padding: '28px',
-                        width: '580px', maxWidth: '92vw',
-                        boxShadow: '0 24px 64px rgba(0,0,0,0.35)' }}>
-
-            {/* Modal header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between',
-                          alignItems: 'flex-start', marginBottom: '18px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: C.card, borderRadius: '16px', padding: '28px', width: '540px',
+                        maxWidth: '90vw', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: '17px', color: C.navy }}>
-                  ✉️ AI-Drafted Email
-                </div>
-                <div style={{ fontSize: '12px', color: C.g600, marginTop: '3px' }}>
-                  {customer?.legal_name}
-                  {recs ? ` · ${getProd(recs.recommendation_1).label}` : ''}
-                </div>
+                <div style={{ fontWeight: 700, fontSize: '16px', color: C.text }}>✉️ Draft Personalised Email</div>
+                <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>GLM 5.2 · Unity AI Gateway</div>
               </div>
-              <button
-                onClick={() => setShowEmail(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer',
-                         fontSize: '20px', color: C.g400, lineHeight: 1, padding: 0 }}
-              >
-                ✕
-              </button>
+              <button onClick={() => { setShowEmail(false); setEmailDraft(''); }}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: C.muted }}>✕</button>
             </div>
-
-            {/* Context chips */}
-            {recs && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px',
-                            flexWrap: 'wrap' }}>
-                <span style={{ padding: '4px 10px', borderRadius: '8px',
-                               background: '#EEF2FF', color: C.navy,
-                               fontSize: '12px', fontWeight: 600 }}>
-                  {getProd(recs.recommendation_1).icon} {getProd(recs.recommendation_1).label}
-                </span>
-                <span style={{ padding: '4px 10px', borderRadius: '8px',
-                               background: '#DCFCE7', color: '#166534',
-                               fontSize: '12px', fontWeight: 600 }}>
-                  {recs.confidence_1}% confidence
-                </span>
-                {seg && (
-                  <span style={{ padding: '4px 10px', borderRadius: '8px',
-                                 background: seg.bg, color: seg.textColor,
-                                 fontSize: '12px', fontWeight: 600 }}>
-                    {seg.label}
-                  </span>
-                )}
+            {customer && recs && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <Badge label={customer.legal_name} bg={C.bg} text={C.text} />
+                <Badge label={getProd(recs.recommendation_1).label} bg={C.blueLight} text={C.navy} />
+                <Badge label={`${Math.round(parseFloat(recs.confidence_1)||0)}% confidence`} bg={C.bg} text={C.muted} />
               </div>
             )}
-
-            {/* Email body */}
-            {emailLoading ? (
-              <div style={{ textAlign: 'center', padding: '44px', color: C.g600 }}>
-                <div style={{ fontSize: '26px', marginBottom: '14px' }}>✨</div>
-                <div style={{ fontSize: '14px', fontWeight: 500 }}>
-                  GLM 5.2 is drafting your personalised email…
-                </div>
-                <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.6 }}>
-                  via Unity AI Gateway
-                </div>
-              </div>
-            ) : (
-              <textarea
-                value={emailDraft}
-                onChange={e => setEmailDraft(e.target.value)}
-                style={{
-                  width: '100%', height: '220px', padding: '14px', fontSize: '13px',
-                  lineHeight: 1.65, border: `1.5px solid ${C.g200}`, borderRadius: '10px',
-                  fontFamily: 'inherit', resize: 'vertical', outline: 'none',
-                  boxSizing: 'border-box', color: C.g900,
-                }}
-              />
-            )}
-
-            {/* Footer row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between',
-                          alignItems: 'center', marginTop: '14px' }}>
-              <div style={{ fontSize: '11px', color: C.g400, maxWidth: '280px' }}>
-                ⚠️ AI-generated via Unity AI Gateway — reviewed before sending
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowEmail(false)}
-                  style={{ padding: '8px 16px', border: `1.5px solid ${C.g200}`,
-                           borderRadius: '8px', background: C.white, cursor: 'pointer',
-                           fontSize: '13px', color: C.g600 }}
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => navigator.clipboard.writeText(emailDraft)}
-                  disabled={emailLoading}
-                  style={{ padding: '8px 16px', background: C.navy, color: C.white,
-                           border: 'none', borderRadius: '8px', cursor: 'pointer',
-                           fontWeight: 600, fontSize: '13px' }}
-                >
-                  📋 Copy
-                </button>
-              </div>
+            <textarea
+              value={emailLoading ? '⏳ Generating with GLM 5.2…' : emailDraft}
+              onChange={e => setEmailDraft(e.target.value)}
+              readOnly={emailLoading}
+              rows={9}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${C.border}`,
+                       background: C.bg, color: C.text, fontSize: '13px', lineHeight: 1.6,
+                       resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+            <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px', fontStyle: 'italic' }}>
+              AI-generated via Unity AI Gateway · review before sending
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => { setShowEmail(false); setEmailDraft(''); }}
+                style={{ padding: '8px 16px', border: `1px solid ${C.border}`, borderRadius: '8px',
+                         background: 'transparent', color: C.text, cursor: 'pointer', fontSize: '13px' }}>Close</button>
+              {emailDraft && !emailLoading && (
+                <button onClick={() => navigator.clipboard.writeText(emailDraft)}
+                  style={{ padding: '8px 16px', background: C.red, color: '#fff', border: 'none',
+                           borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>📋 Copy</button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ════════ FMAPI EXPLAIN MODAL ═══════════════════════════════════════ */}
+      {/* ════════════════ EXPLAIN MODAL ══════════════════════════════════════ */}
       {showExplain !== null && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      zIndex: 1000 }}>
-          <div style={{ background: C.white, borderRadius: '16px', padding: '28px',
-                        width: '480px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          marginBottom: '16px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: C.card, borderRadius: '16px', padding: '28px', width: '500px',
+                        maxWidth: '90vw', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '16px', color: C.navy }}>
-                  🤖 Why This Product?
-                </div>
-                <div style={{ fontSize: '12px', color: C.g400, marginTop: '2px' }}>
-                  AI-powered explanation · powered by GLM 5.2 via FMAPI
-                </div>
+                <div style={{ fontWeight: 700, fontSize: '16px', color: C.text }}>🤖 Why This Product?</div>
+                <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>FMAPI · GLM 5.2 · Unity AI Gateway</div>
               </div>
               <button onClick={() => { setShowExplain(null); setExplanation(''); }}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer',
-                         color: C.g400, lineHeight: 1 }}>✕</button>
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: C.muted }}>✕</button>
             </div>
-
-            {/* Product badge */}
             {recs && showExplain && (() => {
-              const prod = showExplain === 1 ? recs.recommendation_1 : recs.recommendation_2;
-              const conf = showExplain === 1 ? recs.confidence_1 : recs.confidence_2;
-              const p    = getProd(prod);
+              const product = showExplain === 1 ? recs.recommendation_1 : recs.recommendation_2;
+              const conf    = showExplain === 1 ? recs.confidence_1 : recs.confidence_2;
+              const p = getProd(product);
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px',
-                              padding: '12px 16px', borderRadius: '10px', background: '#EEF2FF',
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                              borderRadius: '10px', background: C.bg, border: `1px solid ${C.border}`,
                               marginBottom: '16px' }}>
-                  <span style={{ fontSize: '28px' }}>{p.icon}</span>
+                  <span style={{ fontSize: '32px' }}>{p.icon}</span>
                   <div>
-                    <div style={{ fontWeight: 700, color: C.navy }}>{p.label}</div>
-                    <div style={{ fontSize: '12px', color: C.g400 }}>{conf}% confidence · #{showExplain} recommendation</div>
+                    <div style={{ fontWeight: 700, color: C.text }}>{p.label}</div>
+                    <div style={{ fontSize: '12px', color: C.muted }}>{Math.round(parseFloat(conf)||0)}% confidence · #{showExplain} recommendation</div>
                   </div>
                 </div>
               );
             })()}
-
-            {/* Explanation */}
             <div style={{ minHeight: '80px', padding: '14px', borderRadius: '10px',
-                          background: C.bg, border: `1px solid ${C.g200}`, fontSize: '14px',
-                          lineHeight: 1.6, color: C.g600 }}>
+                          background: C.bg, border: `1px solid ${C.border}`,
+                          fontSize: '14px', lineHeight: 1.7, color: C.text }}>
               {explainLoading ? (
-                <div style={{ color: C.g400, fontStyle: 'italic' }}>
-                  ⏳ GLM 5.2 is analyzing {customer?.legal_name}'s profile…
-                </div>
-              ) : explanation || (
-                <div style={{ color: C.g400, fontStyle: 'italic' }}>
-                  Click "Explain" to generate an AI explanation.
-                </div>
-              )}
+                <span style={{ color: C.muted, fontStyle: 'italic' }}>
+                  ⏳ GLM 5.2 is analysing {customer?.legal_name}'s profile…
+                </span>
+              ) : explanation || <span style={{ color: C.muted, fontStyle: 'italic' }}>Click Why to generate.</span>}
             </div>
-
-            <div style={{ fontSize: '11px', color: C.g400, marginTop: '10px', fontStyle: 'italic' }}>
-              ✓ Generated by GLM 5.2 via Unity AI Gateway · logged for compliance
+            <div style={{ fontSize: '11px', color: C.muted, marginTop: '8px', fontStyle: 'italic' }}>
+              ✓ Every explanation logged for compliance audit via Unity AI Gateway
             </div>
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button onClick={() => { setShowExplain(null); setExplanation(''); }}
-                style={{ padding: '8px 16px', border: `1px solid ${C.g200}`, borderRadius: '8px',
-                         background: C.white, cursor: 'pointer', fontSize: '13px', color: C.g600 }}>
-                Close
-              </button>
+                style={{ padding: '8px 16px', border: `1px solid ${C.border}`, borderRadius: '8px',
+                         background: 'transparent', color: C.text, cursor: 'pointer', fontSize: '13px' }}>Close</button>
               {explanation && (
                 <button onClick={() => navigator.clipboard.writeText(explanation)}
-                  style={{ padding: '8px 16px', background: C.navy, color: C.white, border: 'none',
-                           borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
-                  📋 Copy
-                </button>
+                  style={{ padding: '8px 16px', background: C.red, color: '#fff', border: 'none',
+                           borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>📋 Copy</button>
               )}
             </div>
           </div>
         </div>
       )}
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+      `}</style>
     </div>
   );
 }

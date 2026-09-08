@@ -10,7 +10,7 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Feature Engineering — Alliance Bank Product Recommendation
+# MAGIC # Feature Engineering — DBX Bank Product Recommendation
 # MAGIC
 # MAGIC This notebook:
 # MAGIC 1. Loads `gold_customer_360` from Part A
@@ -228,11 +228,11 @@ fe.create_table(
     primary_keys=["party_id"],
     df=feature_df,
     description=(
-        "Customer features for Alliance Bank next-best-product recommendation model. "
+        "Customer features for DBX Bank next-best-product recommendation model. "
         "Engineered from gold_customer_360. Primary key: party_id. "
         "Label: next_best_product (6 classes)."
     ),
-    tags={"team": "ml_platform", "domain": "retail_banking", "model": "product_recommendation"}
+    tags={"domain": "retail_banking", "model": "product_recommendation"}
 )
 
 print(f"Feature table created: {da.feature_table}")
