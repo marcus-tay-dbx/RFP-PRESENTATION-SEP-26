@@ -8,7 +8,7 @@ resources:
         - task_key: feature_engineering
           description: "Build customer_features table from gold_customer_360"
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_b_hyperpersonalization/03_feature_engineering
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/03_feature_engineering
             source: WORKSPACE
           environment_key: serverless_ml
 
@@ -17,7 +17,7 @@ resources:
           depends_on:
             - task_key: feature_engineering
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_b_hyperpersonalization/04_model_training
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/04_model_training
             source: WORKSPACE
           environment_key: serverless_ml
 
@@ -26,7 +26,7 @@ resources:
           depends_on:
             - task_key: model_training
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_b_hyperpersonalization/06_realtime_inference
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/06_realtime_inference
             source: WORKSPACE
           environment_key: serverless_ml
 
@@ -35,7 +35,7 @@ resources:
           depends_on:
             - task_key: realtime_endpoint
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_b_hyperpersonalization/05_batch_inference
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/05_batch_inference
             source: WORKSPACE
           environment_key: serverless_ml
 

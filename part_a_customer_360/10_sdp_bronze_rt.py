@@ -16,6 +16,7 @@
 
 # COMMAND ----------
 # DLT pipelines do not support %run — inline constants instead of shared/config
+# ── PARTNER SETUP: change CATALOG below to match your workspace ──────────────
 CATALOG     = "fevm_master_classic_marcus_catalog"
 SCHEMA      = "rfp_presentation"
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"

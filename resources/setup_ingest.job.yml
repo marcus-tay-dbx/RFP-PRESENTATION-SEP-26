@@ -8,7 +8,7 @@ resources:
         - task_key: setup
           description: "Create UC schema, volumes, and all directory structure (including streaming/ dirs)"
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/00_setup
+            notebook_path: ${workspace.root_path}/files/part_a_customer_360/00_setup
             source: WORKSPACE
           environment_key: serverless
 
@@ -17,7 +17,7 @@ resources:
           depends_on:
             - task_key: setup
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/01_data_generator
+            notebook_path: ${workspace.root_path}/files/part_a_customer_360/01_data_generator
             source: WORKSPACE
           environment_key: serverless
 

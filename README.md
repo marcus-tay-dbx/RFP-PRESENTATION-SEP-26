@@ -95,6 +95,109 @@ All bronze tables use AutoLoader's `rescuedDataColumn` — any malformed field i
 
 ---
 
+## Getting Started (Partner Setup)
+
+If you have been given access to this repo and want to run the demo in your own Databricks workspace, follow these steps. The bundle is fully portable — it deploys to your workspace automatically using your own username and catalog.
+
+### Step 1 — Clone the repo
+
+```bash
+git clone https://github.com/marcus-tay-dbx/RFP-PRESENTATION-SEP-26.git
+cd RFP-PRESENTATION-SEP-26
+```
+
+### Step 2 — Install Databricks CLI
+
+```bash
+brew install databricks        # macOS
+# or: pip install databricks-cli
+databricks --version           # verify ≥ 0.200
+```
+
+### Step 3 — Authenticate to your workspace
+
+```bash
+databricks auth login --host https://<your-workspace>.cloud.databricks.com
+# Follow the browser OAuth flow. Save as a named profile if you have multiple workspaces:
+databricks auth login --host https://<your-workspace>.cloud.databricks.com --profile my-profile
+```
+
+### Step 4 — Set your catalog name
+
+Edit **two places**:
+
+**`databricks.yml`** — add a target for your workspace:
+```yaml
+targets:
+  dev:
+    workspace:
+      host: https://<your-workspace>.cloud.databricks.com
+    variables:
+      catalog: your_catalog_name    # ← your UC catalog
+      schema: rfp_presentation
+```
+
+**`shared/config.py`** — change the `CATALOG` constant:
+```python
+CATALOG = "your_catalog_name"    # ← your UC catalog
+SCHEMA  = "rfp_presentation"     # leave as-is, or rename
+```
+
+**`part_a_customer_360/07_sdp_bronze_silver.py`** and **`10_sdp_bronze_rt.py`** — these DLT notebooks hardcode the catalog inline (DLT does not support `%run`):
+```python
+CATALOG = "your_catalog_name"    # ← change this line in both files
+SCHEMA  = "rfp_presentation"
+```
+
+> **Why two places?** DLT pipeline notebooks can't use `%run` to load config, so they hardcode the constants. All other notebooks use `%run ../shared/config`.
+
+### Step 5 — Deploy the bundle
+
+```bash
+# Deploy to your workspace (uploads all notebooks, creates jobs + pipelines)
+databricks bundle deploy
+
+# Or with a named profile:
+databricks bundle deploy --profile my-profile
+
+# Or override catalog/schema without editing files:
+databricks bundle deploy -v catalog=my_catalog -v schema=my_schema
+```
+
+DABs automatically deploys to:
+```
+/Workspace/Users/<your-email>/rfp-presentation-sep26/
+```
+
+### Step 6 — Run Part A
+
+```bash
+# 1. Start the real-time streaming pipeline (runs continuously)
+databricks bundle run dbx_bronze_rt
+
+# 2. Start the event generator (feeds the streaming pipeline)
+databricks bundle run dbx_events_generator
+
+# 3. Run the full Part A pipeline (setup → data gen → DLT bronze→silver→gold)
+databricks bundle run dbx_setup_and_ingest
+```
+
+### Step 7 — Run Part B (after Part A completes)
+
+```bash
+databricks bundle run dbx_part_b_training
+```
+
+### Step 8 — Import the dashboard
+
+In Databricks UI: **AI/BI → Dashboards → Import** → select `dashboards/customer_360_dashboard.lvdash.json`
+
+### Step 9 — Import the Lakeflow Designer pipeline
+
+In Databricks UI: **Lakeflow → Designer** → import `lakeflow/product_parsing_lakeflow_designer.designer.ipynb`
+
+---
+
 ## Prerequisites
 
 | Requirement | Notes |

@@ -13,5 +13,5 @@ resources:
         #   bronze_credit_bureau   (near-RT micro-batch ~60s)
         #   bronze_telco_events    (near-RT micro-batch ~45s)
         - notebook:
-            path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/10_sdp_bronze_rt
+            path: ${workspace.root_path}/files/part_a_customer_360/10_sdp_bronze_rt
       channel: CURRENT

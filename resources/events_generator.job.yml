@@ -8,7 +8,7 @@ resources:
         - task_key: generate_events
           description: "Long-running notebook: writes streaming JSON files at configured pulse rates"
           notebook_task:
-            notebook_path: /Workspace/Users/marcus.tay@databricks.com/rfp-presentation-sep26/files/part_a_customer_360/11_events_generator
+            notebook_path: ${workspace.root_path}/files/part_a_customer_360/11_events_generator
             source: WORKSPACE
           environment_key: serverless
           timeout_seconds: 28800   # 8 hours max — restart manually for longer demos
