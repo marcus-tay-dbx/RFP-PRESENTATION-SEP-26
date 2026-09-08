@@ -22,7 +22,10 @@ fe = FeatureEngineeringClient()
 
 # COMMAND ----------
 # Build feature DataFrame from gold_customer_360
-gold = spark.table(f"{FULL_SCHEMA}.gold_customer_360")
+# dropDuplicates on party_id guards against duplicate rows from incremental
+# pipeline re-runs while the Customer-360 MV is refreshing.
+gold = (spark.table(f"{FULL_SCHEMA}.gold_customer_360")
+        .dropDuplicates(["party_id"]))
 
 # Label generation using Spark when() — type-safe, no Python UDF serialisation issues
 # Explicit .cast() ensures correct types regardless of how AutoLoader inferred the schema

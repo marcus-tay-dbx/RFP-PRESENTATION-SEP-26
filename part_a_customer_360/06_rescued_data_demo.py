@@ -17,11 +17,12 @@
 
 # COMMAND ----------
 # RESET CELL — idempotent, run before every demo
+import os, shutil
 spark.sql(f"DROP TABLE IF EXISTS {FULL_SCHEMA}.bronze_rescued_demo")
-dbutils.fs.rm(f"{VOLUME_DATA}/rescued_demo/", recurse=True)
-dbutils.fs.rm(f"{VOLUME_DATA}/_schemas/rescued_demo/", recurse=True)
-dbutils.fs.mkdirs(f"{VOLUME_DATA}/rescued_demo/clean/")
-dbutils.fs.mkdirs(f"{VOLUME_DATA}/rescued_demo/malformed/")
+for p in [f"{VOLUME_DATA}/rescued_demo", f"{VOLUME_DATA}/_schemas/rescued_demo"]:
+    shutil.rmtree(p, ignore_errors=True)
+os.makedirs(f"{VOLUME_DATA}/rescued_demo/clean",    exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/rescued_demo/malformed", exist_ok=True)
 print("✅ Reset complete")
 
 # COMMAND ----------
@@ -36,7 +37,7 @@ clean_data = pd.DataFrame([
      "posting_date": "2026-09-01", "status": "settled"}
     for i in range(1, 21)
 ])
-clean_data.to_csv(f"/dbfs{VOLUME_DATA}/rescued_demo/clean/txns_clean.csv", index=False)
+clean_data.to_csv(f"{VOLUME_DATA}/rescued_demo/clean/txns_clean.csv", index=False)
 
 (spark.readStream.format("cloudFiles").option("cloudFiles.format","csv")
     .option("cloudFiles.inferColumnTypes","true").option("header","true")
@@ -67,7 +68,7 @@ malformed_data = pd.DataFrame([
      "posting_date": "2026-09-02", "status": "settled",
      "fraud_score": 0.95},                              # ← unknown extra column
 ])
-malformed_data.to_csv(f"/dbfs{VOLUME_DATA}/rescued_demo/malformed/txns_bad.csv", index=False)
+malformed_data.to_csv(f"{VOLUME_DATA}/rescued_demo/malformed/txns_bad.csv", index=False)
 
 (spark.readStream.format("cloudFiles").option("cloudFiles.format","csv")
     .option("cloudFiles.inferColumnTypes","true").option("header","true")

@@ -15,11 +15,13 @@
 
 # COMMAND ----------
 # RESET CELL — idempotent, run before every demo
+import os, shutil
 spark.sql(f"DROP TABLE IF EXISTS {FULL_SCHEMA}.bronze_customers_evolution")
-dbutils.fs.rm(f"{VOLUME_DATA}/schema_evolution/", recurse=True)
-dbutils.fs.rm(f"{VOLUME_DATA}/_schemas/customers_evolution/", recurse=True)
-dbutils.fs.mkdirs(f"{VOLUME_DATA}/schema_evolution/v1/")
-dbutils.fs.mkdirs(f"{VOLUME_DATA}/schema_evolution/v2/")
+# Use shutil/os for UC Volume paths (Serverless: no /dbfs prefix needed)
+for p in [f"{VOLUME_DATA}/schema_evolution", f"{VOLUME_DATA}/_schemas/customers_evolution"]:
+    shutil.rmtree(p, ignore_errors=True)
+os.makedirs(f"{VOLUME_DATA}/schema_evolution/v1", exist_ok=True)
+os.makedirs(f"{VOLUME_DATA}/schema_evolution/v2", exist_ok=True)
 print("✅ Reset complete — ready for demo")
 
 # COMMAND ----------
@@ -35,7 +37,7 @@ v1_records = [{"cif_number": f"CIF{i:06d}", "legal_name": f"Customer {i}",
                "risk_rating": random.choice(["low","medium","high"])}
               for i in range(1, 101)]
 df_v1 = pd.DataFrame(v1_records)
-df_v1.to_csv(f"/dbfs{VOLUME_DATA}/schema_evolution/v1/customers_v1.csv", index=False)
+df_v1.to_csv(f"{VOLUME_DATA}/schema_evolution/v1/customers_v1.csv", index=False)
 print(f"✅ Written {len(df_v1)} rows with {len(df_v1.columns)} columns")
 
 # COMMAND ----------
@@ -69,7 +71,7 @@ v2_records = [{"cif_number": f"CIF{i:06d}", "legal_name": f"Customer {i}",
                "is_shariah_preferred": random.choice([True, False])}       # NEW
               for i in range(1001, 1051)]
 df_v2 = pd.DataFrame(v2_records)
-df_v2.to_csv(f"/dbfs{VOLUME_DATA}/schema_evolution/v2/customers_v2.csv", index=False)
+df_v2.to_csv(f"{VOLUME_DATA}/schema_evolution/v2/customers_v2.csv", index=False)
 print(f"✅ Written {len(df_v2)} rows with {len(df_v2.columns)} columns (2 NEW fields)")
 
 # COMMAND ----------
