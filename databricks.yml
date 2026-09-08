@@ -4,6 +4,9 @@ bundle:
 include:
   - resources/*.yml
 
+# Notebook paths for Part B (dash-naming follows sbc_churn_prediction reference)
+# Part A notebooks are unchanged
+
 variables:
   catalog:
     default: main

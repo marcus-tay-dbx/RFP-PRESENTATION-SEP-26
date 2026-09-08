@@ -2,40 +2,40 @@ resources:
   jobs:
     dbx_part_b_training:
       name: DBX-Part-B-Training-Pipeline
-      description: "Feature engineering → XGBoost training → endpoint deploy → batch inference"
+      description: "Feature engineering → RF+XGBoost training → endpoint deploy → batch inference"
 
       tasks:
         - task_key: feature_engineering
-          description: "Build customer_features table from gold_customer_360"
+          description: "Build customer_features table from gold_customer_360 + label assignment"
           notebook_task:
-            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/03_feature_engineering
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/03-Feature-Engineering
             source: WORKSPACE
           environment_key: serverless_ml
 
         - task_key: model_training
-          description: "Train XGBoost multi-class recommendation model, register @dev"
+          description: "Train RF + XGBoost, compete by macro F1, register winner as @dev"
           depends_on:
             - task_key: feature_engineering
           notebook_task:
-            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/04_model_training
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/04-Model-Training
             source: WORKSPACE
           environment_key: serverless_ml
 
         - task_key: realtime_endpoint
-          description: "Promote @dev → @champion and deploy serving endpoint"
+          description: "Promote @dev → @champion, deploy/update serving endpoint with AI Gateway logging"
           depends_on:
             - task_key: model_training
           notebook_task:
-            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/06_realtime_inference
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/06-Real-Time-Inference
             source: WORKSPACE
           environment_key: serverless_ml
 
         - task_key: batch_inference
-          description: "Score all customers with @champion → gold_product_recommendations"
+          description: "fe.score_batch all customers → product_recommendation_inference_log + InferenceLog monitor"
           depends_on:
             - task_key: realtime_endpoint
           notebook_task:
-            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/05_batch_inference
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/05-Batch-Inference
             source: WORKSPACE
           environment_key: serverless_ml
 

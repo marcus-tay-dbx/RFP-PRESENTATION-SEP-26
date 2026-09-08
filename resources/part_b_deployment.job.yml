@@ -1,0 +1,44 @@
+resources:
+  jobs:
+    dbx_part_b_deployment:
+      name: DBX-Recommendation-Deployment
+      description: "Evaluate → Approve (F1 gate) → Deploy to @champion + update endpoint. Triggered automatically when a new model version is registered."
+
+      max_concurrent_runs: 1
+
+      parameters:
+        - name: model_name
+          default: "fevm_master_classic_marcus_catalog.rfp_presentation.product_recommendation_model"
+        - name: model_version
+          default: "latest"
+
+      tasks:
+        - task_key: evaluate
+          description: "Score full feature table, log eval_f1_macro as model version tag"
+          notebook_task:
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/08-MLFlow-Evaluate
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+        - task_key: approve
+          description: "Check eval_f1_macro >= F1_THRESHOLD. Fails job if below threshold (manual repair to override)."
+          depends_on:
+            - task_key: evaluate
+          notebook_task:
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/08-MLFlow-Approve
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+        - task_key: deploy
+          description: "Set @champion alias + call serving_endpoints.update_config() to update live endpoint"
+          depends_on:
+            - task_key: approve
+          notebook_task:
+            notebook_path: ${workspace.root_path}/files/part_b_hyperpersonalization/08-MLFlow-Deploy
+            source: WORKSPACE
+          environment_key: serverless_ml
+
+      environments:
+        - environment_key: serverless_ml
+          spec:
+            client: "1"
