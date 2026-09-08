@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AllianceBankHeader } from '../components/AllianceBankHeader';
+import { DBXBankHeader } from '../components/DBXBankHeader';
 import { RecommendationCard }  from '../components/RecommendationCard';
 import { theme } from '../theme';
 
@@ -54,7 +54,7 @@ export default function Customer360ViewA() {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: theme.colors.offWhite }}>
-      <AllianceBankHeader subtitle="Banker's Workstation" />
+      <DBXBankHeader subtitle="Banker's Workstation" />
       <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
 
         {/* LEFT SIDEBAR */}

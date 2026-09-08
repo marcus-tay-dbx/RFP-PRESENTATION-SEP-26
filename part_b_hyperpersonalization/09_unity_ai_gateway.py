@@ -154,7 +154,7 @@ print(f"Traffic split configured: {resp.status_code} — 70% GLM 5.2 / 30% GLM 5
 # MAGIC   usage.total_tokens,
 # MAGIC   response_metadata.finish_reason
 # MAGIC FROM system.ai_gateway.usage
-# MAGIC WHERE endpoint_name LIKE '%abmb%'
+# MAGIC WHERE endpoint_name LIKE '%dbx%'   -- matches deployed endpoint names (e.g. dbx-product-recommendation-*)
 # MAGIC ORDER BY timestamp_ms DESC
 # MAGIC LIMIT 20;
 # MAGIC -- Compliance story: "every AI call, who called it, what was asked, what was returned — all auditable"

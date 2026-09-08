@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AllianceBankHeader } from '../components/AllianceBankHeader';
+import { DBXBankHeader } from '../components/DBXBankHeader';
 import { RecommendationCard }  from '../components/RecommendationCard';
 import { theme } from '../theme';
 
@@ -61,7 +61,7 @@ export default function Customer360ViewB() {
 
   return (
     <div style={{ fontFamily:'system-ui,sans-serif', minHeight:'100vh', background:'#F0F4FA' }}>
-      <AllianceBankHeader subtitle="Intelligence Hub" />
+      <DBXBankHeader subtitle="Intelligence Hub" />
 
       {/* Search bar */}
       <div style={{ background:theme.colors.navy, padding:'16px 32px', position:'relative' }}>

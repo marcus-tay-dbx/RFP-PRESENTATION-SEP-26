@@ -1,7 +1,7 @@
 import React from 'react';
 import { theme } from '../theme';
 
-export const AllianceBankHeader: React.FC<{ subtitle?: string }> = ({ subtitle }) => (
+export const DBXBankHeader: React.FC<{ subtitle?: string }> = ({ subtitle }) => (
   <header style={{ background: theme.colors.navy, color: theme.colors.white,
                    padding: '12px 24px', display: 'flex', alignItems: 'center',
                    gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>

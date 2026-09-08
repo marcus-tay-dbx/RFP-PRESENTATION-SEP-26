@@ -154,7 +154,7 @@ All seven tables use **SCD Type 2** — full history is preserved automatically 
 
 | Notebook | What It Does |
 |---|---|
-| `00_setup.py` | Create Lakebase project (`ABMB-RFP-PRESENTATION`), initialise feature store schema |
+| `00_setup.py` | Create Lakebase project (`DBX-RFP-PRESENTATION`), initialise feature store schema |
 | `01_overview.py` | Architecture walkthrough and demo narrative markdown |
 | `02_eda.py` | Exploratory analysis: product ownership rates, income distribution, CTOS score bands |
 | `03_feature_engineering.py` | Derive label column; build `customer_features` feature table; sync to Lakebase |
@@ -206,9 +206,9 @@ All assets land in the configured catalog and schema (defaults below).
 | Feature table | `customer_features` | Delta + Feature Store |
 | Gold recommendations | `gold_product_recommendations` | Delta |
 | ML model | `abmb_recommendation_model` | UC Registered Model |
-| DLT pipeline | `ABMB-Customer-360-Pipeline` | Serverless DLT pipeline |
-| Serving endpoint | `abmb-product-recommendation-<username>` | Model Serving |
-| Lakebase project | `ABMB-RFP-PRESENTATION` | Lakebase Postgres |
+| DLT pipeline | `DBX-Customer-360-Pipeline` | Serverless DLT pipeline |
+| Serving endpoint | `dbx-product-recommendation-<username>` | Model Serving |
+| Lakebase project | `DBX-RFP-PRESENTATION` | Lakebase Postgres |
 | Databricks App | `app/` | Databricks App (FastAPI + React) |
 
 ---
@@ -230,7 +230,7 @@ databricks bundle run abmb_part_b_training
 
 # Check job run status
 databricks bundle run --no-wait abmb_setup_and_ingest
-databricks jobs list-runs --job-name ABMB-Part-A-Setup-and-Ingest
+databricks jobs list-runs --job-name DBX-Part-A-Setup-and-Ingest
 
 # Destroy all deployed resources (use with caution)
 databricks bundle destroy
