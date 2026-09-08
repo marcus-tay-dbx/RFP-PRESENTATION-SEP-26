@@ -28,6 +28,12 @@ resources:
           pipeline_task:
             pipeline_id: ${resources.pipelines.dbx_pipeline.id}
 
+      # Daily refresh at 01:00 AM Kuala Lumpur time
+      schedule:
+        quartz_cron_expression: "0 0 1 * * ?"
+        timezone_id: "Asia/Kuala_Lumpur"
+        pause_status: UNPAUSED
+
       environments:
         - environment_key: serverless
           spec:

@@ -344,10 +344,37 @@ for cif in customer_ids:
             "source_system":            "TXN_ENGINE",
         })
 
-df_txn = pd.DataFrame(transactions)
+# ── Inject ~5% dirty records to demonstrate DQ expectations in silver layer ──
+# DROP expectations: valid_txn_id (null ID), positive_amount (negative amount)
+# ALLOW expectations: valid_currency, valid_status, valid_rail, valid_sanctions,
+#                     posting_after_value (posting < value date)
+n_dirty = max(100, int(len(transactions) * 0.05))
+dirty_sample = random.sample(transactions, n_dirty)
+dirty_records = []
+for i, base in enumerate(dirty_sample):
+    rec = dict(base)
+    bucket = i % 6
+    if bucket == 0:   # ~17% of dirty → null txn ID (DROP)
+        rec["payment_transaction_id"] = None
+    elif bucket == 1: # ~17% of dirty → negative amount (DROP)
+        rec["payment_amount"] = -round(random.uniform(10, 5000), 2)
+    elif bucket == 2: # ~17% → invalid currency (ALLOW+flagged)
+        rec["currency_id"] = random.choice(["XYZ","BTC","AED","JPY"])
+    elif bucket == 3: # ~17% → invalid status (ALLOW+flagged)
+        rec["instruction_status"] = random.choice(["FROZEN","FRAUD_HOLD","ON_HOLD","DISPUTED"])
+    elif bucket == 4: # ~17% → invalid payment rail (ALLOW+flagged)
+        rec["payment_rail_type"] = random.choice(["CRYPTO","BLIK","RTGS_EXT","CBDC"])
+    else:             # ~17% → posting_date before value_date (ALLOW+flagged)
+        vd = date.fromisoformat(rec["value_date"])
+        rec["posting_date"] = (vd - timedelta(days=random.randint(1, 3))).isoformat()
+    dirty_records.append(rec)
+
+all_transactions = transactions + dirty_records
+random.shuffle(all_transactions)
+df_txn = pd.DataFrame(all_transactions)
 os.makedirs(f"{VOLUME_DATA}/batch_v1/transactions", exist_ok=True)
 df_txn.to_csv(f"{VOLUME_DATA}/batch_v1/transactions/transactions.csv", index=False)
-print(f"✅ transactions.csv: {len(df_txn)} rows")
+print(f"✅ transactions.csv: {len(df_txn)} rows ({len(dirty_records)} dirty = {100*len(dirty_records)/len(df_txn):.1f}%)")
 
 # COMMAND ----------
 # MAGIC %md ### Generate Card Transactions (~10,000 rows)
