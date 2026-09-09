@@ -60,43 +60,62 @@ print(f"Champion: v{champion_version}  URI: {model_uri}")
 features_pdf = spark.table(da.feature_table).select("party_id", *DA.FEATURES).toPandas()
 print(f"Loaded {len(features_pdf):,} customers for scoring")
 
-# Load champion model as pyfunc
-print(f"Loading model from {model_uri}...")
-model_pyfunc = mlflow.pyfunc.load_model(model_uri)
-print("Model loaded.")
-
-# Force all feature columns to float64 via numpy (handles both int64 and Int64 dtypes)
+# Force all feature columns to float64 via numpy
 X_np    = np.array(features_pdf[DA.FEATURES], dtype=np.float64)
 X_input = pd.DataFrame(X_np, columns=DA.FEATURES)
 
-# Predict — XGBoost multi:softprob returns probabilities (n_samples, n_classes)
-raw_preds = model_pyfunc.predict(X_input)
+# Get the champion model's run_id so we can load its predict_proba directly
+champ_mv  = client.get_model_version_by_alias(da.model_name, "champion")
+champ_run = champ_mv.run_id
+print(f"Champion: v{champ_mv.version}  run_id={champ_run}")
 
-if isinstance(raw_preds, pd.DataFrame):
-    proba_arr = raw_preds.values
-elif isinstance(raw_preds, np.ndarray):
-    proba_arr = raw_preds
-else:
-    proba_arr = np.array(raw_preds)
+# Load model to get probabilities (try XGBoost first, then sklearn, then pyfunc fallback)
+proba_arr = None
+for flavor_name, load_fn in [
+    ("xgboost",  lambda: __import__("mlflow.xgboost",  fromlist=["load_model"]).load_model(f"runs:/{champ_run}/model")),
+    ("sklearn",  lambda: __import__("mlflow.sklearn",  fromlist=["load_model"]).load_model(f"runs:/{champ_run}/model")),
+]:
+    try:
+        mdl = load_fn()
+        proba_arr = mdl.predict_proba(X_input)
+        print(f"Probabilities via {flavor_name}.load_model — shape={proba_arr.shape}")
+        break
+    except Exception as e:
+        print(f"  {flavor_name} loader failed: {e}")
 
-print(f"Prediction output shape: {proba_arr.shape}")
+if proba_arr is None:
+    # Last resort: use pyfunc predict (returns class indices for XGBClassifier)
+    print("Falling back to pyfunc.predict (class indices, no probabilities)")
+    model_pyfunc = mlflow.pyfunc.load_model(model_uri)
+    raw_preds    = model_pyfunc.predict(X_input)
+    if isinstance(raw_preds, pd.DataFrame):
+        raw_arr = raw_preds.values
+    elif isinstance(raw_preds, np.ndarray):
+        raw_arr = raw_preds
+    else:
+        raw_arr = np.array(raw_preds)
+
+    if raw_arr.ndim == 2 and raw_arr.shape[1] == len(DA.LABEL_CLASSES):
+        proba_arr = raw_arr  # already a probability matrix
+    else:
+        # Single-class output — build one-hot-like array for consistency
+        flat = raw_arr.flatten().astype(int)
+        proba_arr = np.zeros((len(flat), len(DA.LABEL_CLASSES)), dtype=np.float64)
+        for i, idx in enumerate(flat):
+            if 0 <= idx < len(DA.LABEL_CLASSES):
+                proba_arr[i, idx] = 1.0
+            else:
+                proba_arr[i, 0] = 1.0  # fallback to first class
+
+print(f"Probability matrix shape: {proba_arr.shape}")
 
 # ── Derive top-2 predictions ──────────────────────────────────────────────────
-if proba_arr.ndim == 2 and proba_arr.shape[1] == len(DA.LABEL_CLASSES):
-    # Full probability matrix — get top-2
-    top2_idx    = np.argsort(-proba_arr, axis=1)[:, :2]
-    pred_labels = [DA.LABEL_CLASSES[top2_idx[i, 0]] for i in range(len(proba_arr))]
-    rec1        = [DA.LABEL_CLASSES[top2_idx[i, 0]] for i in range(len(proba_arr))]
-    rec2        = [DA.LABEL_CLASSES[top2_idx[i, 1]] for i in range(len(proba_arr))]
-    conf1       = [round(float(proba_arr[i, top2_idx[i, 0]]) * 100, 1) for i in range(len(proba_arr))]
-    conf2       = [round(float(proba_arr[i, top2_idx[i, 1]]) * 100, 1) for i in range(len(proba_arr))]
-else:
-    # Single column — can't compute probability-based top-2
-    pred_labels = list(proba_arr.flatten()) if proba_arr.ndim <= 1 else [DA.LABEL_CLASSES[int(np.argmax(row))] for row in proba_arr]
-    rec1 = pred_labels
-    rec2 = ["NO_ACTION"] * len(pred_labels)
-    conf1 = [85.0] * len(pred_labels)
-    conf2 = [10.0] * len(pred_labels)
+top2_idx    = np.argsort(-proba_arr, axis=1)[:, :2]
+pred_labels = [DA.LABEL_CLASSES[top2_idx[i, 0]] for i in range(len(proba_arr))]
+rec1        = [DA.LABEL_CLASSES[top2_idx[i, 0]] for i in range(len(proba_arr))]
+rec2        = [DA.LABEL_CLASSES[top2_idx[i, 1]] for i in range(len(proba_arr))]
+conf1       = [round(float(proba_arr[i, top2_idx[i, 0]]) * 100, 1) for i in range(len(proba_arr))]
+conf2       = [round(float(proba_arr[i, top2_idx[i, 1]]) * 100, 1) for i in range(len(proba_arr))]
 
 print(f"Prediction distribution: { {lbl: pred_labels.count(lbl) for lbl in DA.LABEL_CLASSES} }")
 
@@ -178,9 +197,10 @@ gold_pdf = pd.DataFrame({
     "confidence_2":     conf2,
 })
 
-spark.createDataFrame(gold_pdf).write.format("delta").mode("overwrite").saveAsTable(
-    f"{da.full_schema}.gold_product_recommendations"
-)
+# Drop and recreate to avoid schema conflicts from prior runs
+spark.sql(f"DROP TABLE IF EXISTS {da.full_schema}.gold_product_recommendations")
+spark.createDataFrame(gold_pdf).write.format("delta") \
+    .saveAsTable(f"{da.full_schema}.gold_product_recommendations")
 gold_count = spark.table(f"{da.full_schema}.gold_product_recommendations").count()
 print(f"gold_product_recommendations: {gold_count:,} rows")
 display(spark.table(f"{da.full_schema}.gold_product_recommendations").limit(5))
