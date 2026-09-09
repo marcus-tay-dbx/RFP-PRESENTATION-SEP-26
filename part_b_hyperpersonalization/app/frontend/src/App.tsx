@@ -640,7 +640,7 @@ function PipelinePage({ C, streamingStats, tableStats }: {
 }
 
 // ── DASHBOARD PAGE — @databricks/aibi-client (handles cross-origin auth) ──────
-const DASHBOARD_FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195';
+const DASHBOARD_FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboardsv3/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195';
 
 function DashboardPage({ C }: { C: any }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -712,7 +712,7 @@ function DashboardPage({ C }: { C: any }) {
       {status === 'error' && (
         <IframePage
           C={C}
-          src={`https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195`}
+          src={`https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboardsv3/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195`}
           title="Customer 360 Dashboard (iframe fallback)"
         />
       )}
