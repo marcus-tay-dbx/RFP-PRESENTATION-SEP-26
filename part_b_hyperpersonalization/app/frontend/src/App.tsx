@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+// @ts-ignore — Databricks AI/BI embed client
+import { DatabricksDashboard } from '@databricks/aibi-client';
 
 // ── MARKDOWN RENDERER ────────────────────────────────────────────────────────
 // Renders **bold**, bullet lists (- / •), numbered lists (1.), Subject: lines,
@@ -637,6 +639,164 @@ function PipelinePage({ C, streamingStats, tableStats }: {
   );
 }
 
+// ── DASHBOARD PAGE (uses @databricks/aibi-client for cross-origin embed) ─────
+function DashboardPage({ C }: { C: any }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
+  const dashRef = useRef<any>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/embed-config')
+      .then(r => r.json())
+      .then(cfg => {
+        if (!mounted || !containerRef.current) return;
+        if (!cfg.token) {
+          setErrorMsg('Could not obtain embed token — check SP permissions');
+          setStatus('error');
+          return;
+        }
+        const d = new DatabricksDashboard({
+          instanceUrl: cfg.instance_url,
+          workspaceId: cfg.workspace_id,
+          dashboardId: cfg.dashboard_id,
+          token:       cfg.token,
+          container:   containerRef.current,
+        });
+        dashRef.current = d;
+        d.initialize()
+          .then(() => { if (mounted) setStatus('ready'); })
+          .catch((e: any) => { if (mounted) { setErrorMsg(String(e)); setStatus('error'); } });
+      })
+      .catch((e: any) => { if (mounted) { setErrorMsg(String(e)); setStatus('error'); } });
+    return () => {
+      mounted = false;
+      dashRef.current?.destroy?.();
+    };
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
+      {/* Title bar */}
+      <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: '10px 24px',
+                    display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <span style={{ fontSize: '18px' }}>📊</span>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: C.text }}>Customer 360 AI/BI Dashboard</div>
+          <div style={{ fontSize: '11px', color: C.muted }}>Databricks Lakeview · rfp_presentation</div>
+        </div>
+        {status === 'loading' && (
+          <span style={{ fontSize: '12px', color: C.muted, marginLeft: '12px' }}>⏳ Initialising…</span>
+        )}
+        <a href="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6"
+           target="_blank" rel="noopener noreferrer"
+           style={{ marginLeft: 'auto', fontSize: '12px', color: C.blue, fontWeight: 600,
+                    textDecoration: 'none', padding: '5px 12px', borderRadius: '6px',
+                    border: `1px solid ${C.border}`, background: C.bg }}>
+          ↗ Open in Databricks
+        </a>
+      </div>
+
+      {status === 'error' ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      justifyContent: 'center', gap: '16px', padding: '40px' }}>
+          <div style={{ fontSize: '48px' }}>📊</div>
+          <div style={{ fontWeight: 700, fontSize: '18px', color: C.text }}>Open Dashboard in Databricks</div>
+          <div style={{ color: C.muted, fontSize: '13px', maxWidth: '500px', textAlign: 'center' }}>
+            {errorMsg || 'Dashboard embed requires direct Databricks access.'}
+          </div>
+          <a href="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6"
+             target="_blank" rel="noopener noreferrer"
+             style={{ padding: '12px 28px', background: C.red, color: '#fff', borderRadius: '10px',
+                      textDecoration: 'none', fontWeight: 700, fontSize: '14px' }}>
+            🚀 Open Full Dashboard
+          </a>
+        </div>
+      ) : (
+        <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }} />
+      )}
+    </div>
+  );
+}
+
+// ── GENIE PAGE (launch portal — Genie iframe requires same-origin auth) ───────
+const GENIE_QUESTIONS = [
+  'How many customers have a CTOS score above 700?',
+  'What is the average portfolio balance by customer segment?',
+  'Which customers have home loans but no credit cards?',
+  'Show me top 10 customers by total deposit balance',
+  'How many customers were recommended INVESTMENT vs HOME_LOAN?',
+  'What is the distribution of customers across Malaysian states?',
+  'Which high-net-worth customers have no investment products?',
+  'Show monthly transaction trends for the last 6 months',
+];
+
+function GeniePage({ C }: { C: any }) {
+  const [copiedQ, setCopiedQ] = useState<string | null>(null);
+  const GENIE_URL = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/genie/rooms/01f1aba88ae1147aaab06144951695f9';
+
+  const copyQ = (q: string) => {
+    navigator.clipboard.writeText(q);
+    setCopiedQ(q);
+    setTimeout(() => setCopiedQ(null), 1500);
+  };
+
+  return (
+    <div style={{ height: 'calc(100vh - 56px)', overflow: 'auto', background: C.bg }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Hero */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ fontSize: '56px', marginBottom: '12px' }}>🧞</div>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, color: C.text, margin: '0 0 8px' }}>
+            Ask Genie Anything
+          </h2>
+          <p style={{ color: C.muted, fontSize: '14px', maxWidth: '480px', margin: '0 auto 24px' }}>
+            Natural language analytics over your Customer 360 data.
+            No SQL required — just type your question.
+          </p>
+          <a href={GENIE_URL} target="_blank" rel="noopener noreferrer"
+             style={{ display: 'inline-block', padding: '14px 32px', background: C.red, color: '#fff',
+                      borderRadius: '12px', textDecoration: 'none', fontWeight: 700, fontSize: '15px',
+                      boxShadow: '0 4px 16px rgba(255,54,33,0.35)' }}>
+            🚀 Launch Genie Room
+          </a>
+        </div>
+
+        {/* Sample questions */}
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '16px', padding: '24px' }}>
+          <div style={{ fontWeight: 700, fontSize: '14px', color: C.text, marginBottom: '4px' }}>
+            💡 Sample Questions
+          </div>
+          <div style={{ fontSize: '12px', color: C.muted, marginBottom: '16px' }}>
+            Click to copy, then paste into Genie
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {GENIE_QUESTIONS.map(q => (
+              <div key={q} onClick={() => copyQ(q)}
+                style={{ padding: '12px 14px', borderRadius: '10px', background: C.bg,
+                         border: `1px solid ${C.border}`, cursor: 'pointer', fontSize: '13px',
+                         color: copiedQ === q ? C.green : C.text, lineHeight: 1.4,
+                         transition: 'all 0.15s', fontWeight: copiedQ === q ? 600 : 400,
+                         display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>
+                  {copiedQ === q ? '✅' : '💬'}
+                </span>
+                <span>{copiedQ === q ? 'Copied!' : q}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Powered by */}
+        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: C.subtle }}>
+          Powered by Databricks AI/BI Genie · Natural language to SQL · gold_customer_360
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   // ── Theme & RM ──────────────────────────────────────────────────────────
@@ -988,75 +1148,12 @@ export default function App() {
 
       {/* ════════════════ DASHBOARD PAGE ════════════════════════════════════ */}
       {page === 'dashboard' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
-          <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
-                        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '10px',
-                        flexShrink: 0 }}>
-            <span style={{ fontSize: '18px' }}>📊</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '15px', color: C.text }}>
-                Customer 360 AI/BI Dashboard
-              </div>
-              <div style={{ fontSize: '11px', color: C.muted }}>
-                Databricks Lakeview · fevm_master_classic_marcus · rfp_presentation
-              </div>
-            </div>
-            <a
-              href="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ marginLeft: 'auto', fontSize: '12px', color: C.blue, fontWeight: 600,
-                       textDecoration: 'none', padding: '5px 12px', borderRadius: '6px',
-                       border: `1px solid ${C.border}`, background: C.bg }}>
-              ↗ Open in new tab
-            </a>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <iframe
-              src="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195"
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-              title="Customer 360 AI/BI Dashboard"
-            />
-          </div>
-        </div>
+        <DashboardPage C={C} />
       )}
 
       {/* ════════════════ GENIE PAGE ════════════════════════════════════════ */}
       {page === 'genie' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
-          <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`,
-                        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '10px',
-                        flexShrink: 0 }}>
-            <span style={{ fontSize: '18px' }}>🧞</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '15px', color: C.text }}>
-                Genie — Ask Questions About Your Customers
-              </div>
-              <div style={{ fontSize: '11px', color: C.muted }}>
-                Databricks AI/BI Genie · Natural language analytics · fevm_master_classic_marcus
-              </div>
-            </div>
-            <a
-              href="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/genie/rooms/01f1aba88ae1147aaab06144951695f9?o=7474652083556195"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ marginLeft: 'auto', fontSize: '12px', color: C.blue, fontWeight: 600,
-                       textDecoration: 'none', padding: '5px 12px', borderRadius: '6px',
-                       border: `1px solid ${C.border}`, background: C.bg }}>
-              ↗ Open in new tab
-            </a>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <iframe
-              src="https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/genie/rooms/01f1aba88ae1147aaab06144951695f9?o=7474652083556195"
-              width="100%"
-              height="100%"
-              style={{ border: 'none', display: 'block' }}
-              title="Genie — Customer Analytics"
-              allow="clipboard-write"
-            />
-          </div>
-        </div>
+        <GeniePage C={C} />
       )}
 
       {/* ════════════════ PIPELINE PAGE ═════════════════════════════════════ */}

@@ -455,25 +455,29 @@ def explain_recommendation(req: ExplainRequest):
     digital_score = _f(c.get("digital_maturity_score"))
     product_views = c.get("last_product_category_viewed", "") or ""
 
-    prompt = f"""You are an DBX Bank AI advisor. A machine learning model has recommended "{product_name}" for a customer with the following profile:
+    system_msg = "You are a structured data formatter. Output ONLY the exact template provided. Do not add analysis, thinking, reasoning, bullet points listing data, or any extra text. Fill in the blanks in the template and stop."
 
-Customer Profile:
-- Name: {name} | Segment: {segment} | Tenure: {tenure} years
-- Annual Income: MYR {income:,.0f} | Net Worth Band: {net_worth}
-- CTOS Credit Score: {ctos}/850
-- Existing Products: Credit Card={has_card}, Home Loan={has_home_loan}, Personal Loan={has_personal}
-- Monthly Loan Commitment: MYR {commitment:,.0f}
-- Digital Maturity Score: {digital_score}/10
-- Last Product Viewed: {product_views}
+    prompt = f"""Fill in this exact template for a DBX Bank RM. Replace only the [brackets]:
 
-Model confidence: {req.confidence:.0f}%
+**Why {product_name} for {name}?**
 
-In 2-3 concise sentences, explain to a bank relationship manager WHY "{product_name}" was recommended for this specific customer. Reference 2-3 specific profile attributes that made this recommendation. Be factual and data-driven. Do not use financial jargon."""
+**Reason 1 — [most relevant attribute]:** [one factual sentence referencing a specific data point]
+
+**Reason 2 — [second attribute]:** [one factual sentence referencing a specific data point]
+
+**Reason 3 — [third attribute]:** [one factual sentence referencing a specific data point]
+
+**RM Next Step:** [one sentence on what to do — call, schedule, offer]
+
+Customer data: Segment={segment} | Income=MYR {income:,.0f} | NetWorth={net_worth} | CTOS={ctos} | Tenure={tenure:.0f}yrs | Card={has_card} | HomeLoan={has_home_loan} | PersonalLoan={has_personal} | Commitment=MYR {commitment:,.0f} | Digital={digital_score}/10 | Confidence={req.confidence:.0f}%"""
 
     payload = {
-        "messages":    [{"role": "user", "content": prompt}],
-        "max_tokens":  200,
-        "temperature": 0.3,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user",   "content": prompt},
+        ],
+        "max_tokens":  500,
+        "temperature": 0.1,
     }
 
     try:
@@ -523,6 +527,34 @@ def table_stats():
         rows = _rows(f"SELECT COUNT(*) as n FROM {FULL}.{t}")
         results[t] = int(rows[0]["n"]) if rows else -1
     return results
+
+
+# ── Dashboard embed token ─────────────────────────────────────────────────────
+DASHBOARD_ID = os.environ.get("DASHBOARD_ID", "01f1aba81e0f1ff9bf93ebc03be8d5b6")
+WORKSPACE_URL = os.environ.get("DATABRICKS_HOST", "https://fevm-fevm-master-classic-marcus.cloud.databricks.com").rstrip("/")
+WORKSPACE_ID  = "7474652083556195"
+GENIE_ROOM_ID = os.environ.get("GENIE_ROOM_ID", "01f1aba88ae1147aaab06144951695f9")
+
+@app.get("/api/embed-config")
+def get_embed_config():
+    """Returns dashboard/genie embed config with a short-lived token for the aibi client."""
+    try:
+        token_resp = w.tokens.create(comment="aibi-embed", lifetime_seconds=3600)
+        token = token_resp.token_value
+    except Exception as e:
+        # Fallback: return config without token (caller can handle gracefully)
+        token = None
+
+    return {
+        "instance_url":    WORKSPACE_URL,
+        "workspace_id":    WORKSPACE_ID,
+        "dashboard_id":    DASHBOARD_ID,
+        "genie_room_id":   GENIE_ROOM_ID,
+        "token":           token,
+        # Direct embed URLs (usable if browser allows cross-origin iframes)
+        "dashboard_embed_url": f"{WORKSPACE_URL}/embed/dashboards/{DASHBOARD_ID}?o={WORKSPACE_ID}",
+        "genie_embed_url":     f"{WORKSPACE_URL}/embed/genie/rooms/{GENIE_ROOM_ID}?o={WORKSPACE_ID}",
+    }
 
 
 # ── Serve React frontend ──────────────────────────────────────────────────────
