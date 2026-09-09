@@ -123,10 +123,10 @@ with mlflow.start_run(run_name="rf_baseline") as rf_run:
 
     y_pred_rf  = rf.predict(X_test)
     y_proba_rf = rf.predict_proba(X_test)
-    rf_f1      = f1_score(y_test, y_pred_rf, average="macro")
+    rf_f1      = f1_score(y_test, y_pred_rf, average="macro", labels=list(range(len(DA.LABEL_CLASSES))), zero_division=0)
 
     mlflow.log_metric("test_f1_macro", rf_f1)
-    report_rf = classification_report(y_test, y_pred_rf, target_names=le.classes_, output_dict=True)
+    report_rf = classification_report(y_test, y_pred_rf, target_names=list(le.classes_), labels=list(range(len(DA.LABEL_CLASSES))), zero_division=0, output_dict=True)
     for cls in le.classes_:
         mlflow.log_metric(f"f1_{cls}",        report_rf[cls]["f1-score"])
         mlflow.log_metric(f"precision_{cls}", report_rf[cls]["precision"])
@@ -201,11 +201,11 @@ with mlflow.start_run(run_name="xgboost_challenger") as xgb_run:
 
     y_pred_xgb  = xgb_model.predict(X_test)
     y_proba_xgb = xgb_model.predict_proba(X_test)
-    xgb_f1      = f1_score(y_test, y_pred_xgb, average="macro")
+    xgb_f1      = f1_score(y_test, y_pred_xgb, average="macro", labels=list(range(len(DA.LABEL_CLASSES))), zero_division=0)
 
     mlflow.log_metric("test_f1_macro",    xgb_f1)
     mlflow.log_metric("best_iteration",   xgb_model.best_iteration)
-    report_xgb = classification_report(y_test, y_pred_xgb, target_names=le.classes_, output_dict=True)
+    report_xgb = classification_report(y_test, y_pred_xgb, target_names=list(le.classes_), labels=list(range(len(DA.LABEL_CLASSES))), zero_division=0, output_dict=True)
     for cls in le.classes_:
         mlflow.log_metric(f"f1_{cls}",        report_xgb[cls]["f1-score"])
         mlflow.log_metric(f"precision_{cls}", report_xgb[cls]["precision"])
@@ -307,7 +307,7 @@ else:
     y_pred_winner = y_pred_rf
 
 print(f"\nClassification Report — {winner_name} (Test Set):")
-print(classification_report(y_test, y_pred_winner, target_names=le.classes_))
+print(classification_report(y_test, y_pred_winner, target_names=list(le.classes_), labels=list(range(len(DA.LABEL_CLASSES))), zero_division=0))
 
 # COMMAND ----------
 print("\nModel training complete.")
