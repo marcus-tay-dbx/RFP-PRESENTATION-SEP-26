@@ -11,12 +11,63 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 w = WorkspaceClient()
 
+# ── Inference helper — uses SDK's api_client which handles OAuth token refresh ──
+def _infer(endpoint_name: str, payload: dict) -> dict:
+    """Call a Databricks serving endpoint via the SDK's API client.
+    This correctly handles M2M OAuth used by Databricks Apps."""
+    return w.api_client.do(
+        "POST",
+        f"/serving-endpoints/{endpoint_name}/invocations",
+        body=payload,
+    )
+
+
+def _extract_glm_text(result: dict) -> str:
+    """Robustly extract text from a GLM / chat-completion response.
+    Handles: standard OpenAI format, GLM thinking models (reasoning_content),
+    flash models, predictions format."""
+    if not isinstance(result, dict):
+        return str(result)
+    choices = result.get("choices") or []
+    if choices:
+        choice = choices[0] if isinstance(choices, list) else choices
+        if isinstance(choice, dict):
+            msg = choice.get("message") or {}
+            if isinstance(msg, dict):
+                # Standard content field
+                content = msg.get("content") or ""
+                if content and str(content).strip():
+                    return str(content).strip()
+                # GLM thinking models: reasoning_content has the actual answer
+                reasoning = msg.get("reasoning_content") or ""
+                if reasoning and str(reasoning).strip():
+                    # Extract the last substantive paragraph (after thinking steps)
+                    lines = [l.strip() for l in str(reasoning).split('\n') if l.strip()]
+                    # Look for email-like content (lines with Dear/Subject/Regards)
+                    email_lines = []
+                    in_email = False
+                    for line in lines:
+                        if any(kw in line for kw in ['Dear ', 'Subject:', 'Hi ', 'Greetings']):
+                            in_email = True
+                        if in_email:
+                            email_lines.append(line)
+                        if in_email and any(kw in line for kw in ['Regards', 'Sincerely', 'Warm regards', 'Best']):
+                            break
+                    if email_lines:
+                        return '\n'.join(email_lines)
+                    return '\n'.join(lines[-15:])  # last 15 lines
+    # Predictions format
+    preds = result.get("predictions") or []
+    if preds:
+        return str(preds[0])
+    return ""
+
 CATALOG = "fevm_master_classic_marcus_catalog"
 SCHEMA  = "rfp_presentation"
 FULL    = f"{CATALOG}.{SCHEMA}"
 
 FEATURE_COLS = [
-    "relationship_tenure_years", "total_deposit_balance_myr", "num_accounts",
+    "tenure_years", "total_deposit_balance_myr", "num_accounts",
     "annual_income_amount", "net_worth_band_encoded", "ctos_score",
     "ccris_status_encoded", "payment_conduct_score", "age",
     "number_of_dependents", "employment_status_encoded", "monthly_loan_commitment_myr",
@@ -27,27 +78,28 @@ FEATURE_COLS = [
 CLASSES = ["CREDIT_CARD", "HOME_LOAN", "INSURANCE", "INVESTMENT", "NO_ACTION", "PERSONAL_LOAN"]
 
 PRODUCT_MAP = {
-    "CREDIT_CARD":   "Alliance Visa Platinum Credit Card",
-    "PERSONAL_LOAN": "Alliance CashFirst Personal Financing-i",
-    "HOME_LOAN":     "Alliance HomeSmart Financing",
-    "INVESTMENT":    "Alliance WealthSmart Income Fund",
-    "INSURANCE":     "Alliance CarStar Takaful",
+    "CREDIT_CARD":   "DBX Credit Card",
+    "PERSONAL_LOAN": "DBX Personal Financing",
+    "HOME_LOAN":     "DBX Home Financing",
+    "INVESTMENT":    "DBX WealthSmart Fund",
+    "INSURANCE":     "DBX Takaful Protection",
 }
 
 _warehouse_id: Optional[str] = None
 
-
-def _username_slug() -> str:
-    ctx = os.environ.get("DATABRICKS_USERNAME", "demo")
-    return re.sub(r"[^a-zA-Z0-9_]", "_", ctx)[:20]
+# ── Endpoint names — override via env vars for portability ────────────────────
+# RECOMMENDATION_ENDPOINT: the XGBoost model serving endpoint name
+# GLM_ENDPOINT: use workspace FMAPI directly (databricks-glm-5-2 is always available)
+RECOMMENDATION_ENDPOINT = os.environ.get("RECOMMENDATION_ENDPOINT", "dbx-product-rec-marcus-tay")
+GLM_ENDPOINT            = os.environ.get("GLM_ENDPOINT",            "databricks-glm-5-3-flash")  # flash model: fast, no thinking overhead
 
 
 def _endpoint_name() -> str:
-    return f"dbx-product-recommendation-{_username_slug()}"
+    return RECOMMENDATION_ENDPOINT
 
 
 def _glm_service() -> str:
-    return f"dbx-glm-gateway-{_username_slug()}"
+    return GLM_ENDPOINT
 
 
 _FALLBACK_WAREHOUSE = os.environ.get("DATABRICKS_WAREHOUSE_ID", "637b124ddfbe2377")
@@ -91,7 +143,10 @@ def health():
 @app.get("/api/debug")
 def debug():
     """Debug endpoint to diagnose warehouse connectivity."""
-    result = {"warehouse_id": None, "error": None, "test_query": None}
+    result = {"warehouse_id": None, "error": None, "test_query": None,
+              "recommendation_endpoint": RECOMMENDATION_ENDPOINT,
+              "glm_endpoint": GLM_ENDPOINT,
+              "databricks_username": os.environ.get("DATABRICKS_USERNAME","not_set")}
     try:
         result["warehouse_id"] = _get_warehouse()
         test = w.statement_execution.execute_statement(
@@ -99,10 +154,15 @@ def debug():
             statement="SELECT 1 as test",
             wait_timeout="30s"
         )
-        result["test_query"] = str(test.result.data_array) if test.result else "no_result"
-        result["tables"] = str(_rows(f"SHOW TABLES IN {FULL}"))[:500]
+        result["test_query"] = "OK" if test.result and test.result.data_array else "no_result"
     except Exception as e:
         result["error"] = str(e)[:500]
+    # Test recommendation endpoint
+    try:
+        ep = w.serving_endpoints.get(name=RECOMMENDATION_ENDPOINT)
+        result["rec_endpoint_state"] = str(ep.state.ready) if ep.state else "unknown"
+    except Exception as e:
+        result["rec_endpoint_state"] = f"ERROR: {str(e)[:200]}"
     return result
 
 
@@ -222,11 +282,19 @@ def get_recommendations(party_id: str):
 # ── Live scoring via model serving endpoint ───────────────────────────────────
 @app.post("/api/customer/{party_id}/recommend-live")
 def recommend_live(party_id: str):
-    rows = _rows(f"SELECT * FROM {FULL}.gold_customer_360 WHERE party_id = '{party_id}'")
+    # Query customer_features — contains pre-encoded columns matching model training input
+    rows = _rows(f"""
+        SELECT {', '.join(FEATURE_COLS)}
+        FROM {FULL}.customer_features
+        WHERE party_id = '{party_id}'
+    """)
     if not rows:
-        raise HTTPException(status_code=404, detail="Customer not found")
-    features = rows[0]
+        # Fallback: try computing from gold_customer_360 with basic encoding
+        rows = _rows(f"SELECT * FROM {FULL}.gold_customer_360 WHERE party_id = '{party_id}'")
+        if not rows:
+            raise HTTPException(status_code=404, detail="Customer not found")
 
+    features = rows[0]
     feature_vector = []
     for col in FEATURE_COLS:
         raw = features.get(col, 0)
@@ -236,14 +304,19 @@ def recommend_live(party_id: str):
             feature_vector.append(0.0)
 
     payload = {
-        "dataframe_split": {
-            "columns": FEATURE_COLS,
-            "data":    [feature_vector],
-        }
+        "dataframe_records": [dict(zip(FEATURE_COLS, feature_vector))]
     }
     try:
-        resp  = w.serving_endpoints.query(name=_endpoint_name(), request=payload)
-        probs = resp.predictions[0] if resp.predictions else [1.0 / len(CLASSES)] * len(CLASSES)
+        result = _infer(_endpoint_name(), payload)
+        # Handle both dataframe_records and predictions response formats
+        probs_raw = result.get("predictions") or result.get("outputs") or []
+        if probs_raw and isinstance(probs_raw[0], list):
+            probs = probs_raw[0]
+        elif probs_raw and isinstance(probs_raw[0], dict):
+            # predictions as list of dicts with class probabilities
+            probs = [probs_raw[0].get(c, 0.0) for c in CLASSES]
+        else:
+            probs = [1.0 / len(CLASSES)] * len(CLASSES)
         ranked = sorted(zip(CLASSES, probs), key=lambda x: x[1], reverse=True)
         return {
             "party_id":         party_id,
@@ -329,13 +402,8 @@ Write a short, warm, professional email {lang_instr} (maximum 150 words).
     }
 
     try:
-        resp = w.serving_endpoints.query(name=_glm_service(), request=payload)
-        if hasattr(resp, "choices") and resp.choices:
-            email_text = resp.choices[0].message.content
-        elif isinstance(resp, dict):
-            email_text = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        else:
-            email_text = str(resp)
+        result_raw = _infer(_glm_service(), payload)
+        email_text = _extract_glm_text(result_raw)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"GLM gateway error: {str(e)}")
 
@@ -370,18 +438,22 @@ def explain_recommendation(req: ExplainRequest):
     except HTTPException:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    name          = c.get("legal_name", "the customer")
-    segment       = c.get("lifestyle_segment", "")
-    income        = c.get("annual_income_amount", 0)
-    ctos          = c.get("ctos_score", "N/A")
-    tenure        = c.get("relationship_tenure_years", 0)
-    has_card      = c.get("has_credit_card", False)
-    has_home_loan = c.get("has_home_loan", False)
-    has_personal  = c.get("has_personal_loan", False)
-    commitment    = c.get("monthly_loan_commitment_myr", 0)
-    net_worth     = c.get("net_worth_band", "")
-    digital_score = c.get("digital_maturity_score", 0)
-    product_views = c.get("last_product_category_viewed", "")
+    def _f(v, default=0.0):
+        try: return float(v or 0)
+        except: return default
+
+    name          = c.get("legal_name", "the customer") or "the customer"
+    segment       = c.get("lifestyle_segment", "") or ""
+    income        = _f(c.get("annual_income_amount"))
+    ctos          = c.get("ctos_score") or "N/A"
+    tenure        = _f(c.get("relationship_tenure_years"))
+    has_card      = bool(c.get("has_credit_card", False))
+    has_home_loan = bool(c.get("has_home_loan", False))
+    has_personal  = bool(c.get("has_personal_loan", False))
+    commitment    = _f(c.get("monthly_loan_commitment_myr"))
+    net_worth     = c.get("net_worth_band", "") or ""
+    digital_score = _f(c.get("digital_maturity_score"))
+    product_views = c.get("last_product_category_viewed", "") or ""
 
     prompt = f"""You are an DBX Bank AI advisor. A machine learning model has recommended "{product_name}" for a customer with the following profile:
 
@@ -405,18 +477,12 @@ In 2-3 concise sentences, explain to a bank relationship manager WHY "{product_n
     }
 
     try:
-        # Try AI Gateway service first, fall back to FMAPI direct
+        # Try GLM service first, fall back to direct FMAPI endpoint
         try:
-            resp = w.serving_endpoints.query(name=_glm_service(), request=payload)
+            result_raw = _infer(_glm_service(), payload)
         except Exception:
-            resp = w.serving_endpoints.query(name="databricks-glm-5-2", request=payload)
-
-        if hasattr(resp, "choices") and resp.choices:
-            explanation = resp.choices[0].message.content
-        elif isinstance(resp, dict):
-            explanation = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
-        else:
-            explanation = str(resp)
+            result_raw = _infer("databricks-glm-5-2", payload)
+        explanation = _extract_glm_text(result_raw)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"FMAPI error: {str(e)}")
 

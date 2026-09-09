@@ -1,1 +1,9 @@
 command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+env:
+  - name: RECOMMENDATION_ENDPOINT
+    value: "dbx-product-rec-marcus-tay"
+  - name: GLM_ENDPOINT
+    value: "databricks-glm-5-3-flash"
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "637b124ddfbe2377"
