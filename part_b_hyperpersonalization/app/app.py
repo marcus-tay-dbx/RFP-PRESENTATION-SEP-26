@@ -82,27 +82,70 @@ def health():
     return {"status": "ok", "service": "DBX Bank Customer Intelligence API"}
 
 
-# ── Customer overview — joins with recommendations for the dashboard ──────────
+# ── Customer overview — with optional recommendations join ─────────────────────
+_recs_table_exists: Optional[bool] = None
+
+def _check_recs_table(force_recheck: bool = False) -> bool:
+    """Check whether gold_product_recommendations exists. Rechecks if not found (table may appear after Part B)."""
+    global _recs_table_exists
+    if _recs_table_exists and not force_recheck:
+        return True
+    rows = _rows(f"SHOW TABLES IN {FULL} LIKE 'gold_product_recommendations'")
+    _recs_table_exists = len(rows) > 0
+    return _recs_table_exists
+
+
+@app.get("/api/status")
+def get_status():
+    """Health + readiness check — shows which tables are available."""
+    return {
+        "status": "ok",
+        "gold_customer_360": len(_rows(f"SELECT COUNT(*) FROM {FULL}.gold_customer_360")) > 0,
+        "gold_product_recommendations": _check_recs_table(force_recheck=True),
+    }
+
+
 @app.get("/api/customers")
 def list_customers(limit: int = 200):
-    """Returns all active customers joined with batch recommendations for the overview table."""
-    sql = f"""
-        SELECT
-            c.party_id, c.cif_number, c.legal_name, c.lifestyle_segment,
-            c.customer_segment, c.primary_state, c.lifecycle_status,
-            c.total_deposit_balance_myr, c.ctos_score,
-            c.relationship_tenure_years, c.annual_income_amount,
-            c.age, c.number_of_dependents, c.employment_status,
-            c.mobile_app_user_flag, c.digital_maturity_score,
-            c.is_shariah_preferred, c.nps_score,
-            COALESCE(r.recommendation_1, 'PENDING') AS recommendation_1,
-            COALESCE(CAST(r.confidence_1 AS STRING), '0') AS confidence_1
-        FROM {FULL}.gold_customer_360 c
-        LEFT JOIN {FULL}.gold_product_recommendations r ON c.party_id = r.party_id
-        WHERE c.lifecycle_status = 'active'
-        ORDER BY c.total_deposit_balance_myr DESC
-        LIMIT {limit}
-    """
+    """Returns all active customers; joins recommendations if table exists."""
+    has_recs = _check_recs_table()
+
+    if has_recs:
+        sql = f"""
+            SELECT
+                c.party_id, c.cif_number, c.legal_name, c.lifestyle_segment,
+                c.customer_segment, c.primary_state, c.lifecycle_status,
+                c.total_deposit_balance_myr, c.ctos_score,
+                c.relationship_tenure_years, c.annual_income_amount,
+                c.age, c.number_of_dependents, c.employment_status,
+                c.mobile_app_user_flag, c.digital_maturity_score,
+                c.is_shariah_preferred, c.nps_score,
+                COALESCE(r.recommendation_1, 'PENDING') AS recommendation_1,
+                COALESCE(CAST(r.confidence_1 AS STRING), '0') AS confidence_1
+            FROM {FULL}.gold_customer_360 c
+            LEFT JOIN {FULL}.gold_product_recommendations r ON c.party_id = r.party_id
+            WHERE c.lifecycle_status = 'active'
+            ORDER BY c.total_deposit_balance_myr DESC
+            LIMIT {limit}
+        """
+    else:
+        # Recommendations table not yet available (Part B pipeline still running)
+        sql = f"""
+            SELECT
+                party_id, cif_number, legal_name, lifestyle_segment,
+                customer_segment, primary_state, lifecycle_status,
+                total_deposit_balance_myr, ctos_score,
+                relationship_tenure_years, annual_income_amount,
+                age, number_of_dependents, employment_status,
+                mobile_app_user_flag, digital_maturity_score,
+                is_shariah_preferred, nps_score,
+                'PENDING' AS recommendation_1,
+                '0' AS confidence_1
+            FROM {FULL}.gold_customer_360
+            WHERE lifecycle_status = 'active'
+            ORDER BY total_deposit_balance_myr DESC
+            LIMIT {limit}
+        """
     return _rows(sql)
 
 
@@ -136,6 +179,8 @@ def get_customer_360(party_id: str):
 # ── Batch recommendations ─────────────────────────────────────────────────────
 @app.get("/api/customer/{party_id}/recommendations")
 def get_recommendations(party_id: str):
+    if not _check_recs_table():
+        raise HTTPException(status_code=404, detail="Recommendations table not available — Part B pipeline still running")
     sql = f"""
         SELECT recommendation_1, confidence_1, recommendation_2, confidence_2
         FROM {FULL}.gold_product_recommendations
@@ -143,7 +188,7 @@ def get_recommendations(party_id: str):
     """
     rows = _rows(sql)
     if not rows:
-        raise HTTPException(status_code=404, detail="Recommendations not found")
+        raise HTTPException(status_code=404, detail="No recommendations found for this customer")
     rec = rows[0]
     rec["confidence_1"] = round(float(rec.get("confidence_1") or 0), 1)
     rec["confidence_2"] = round(float(rec.get("confidence_2") or 0), 1)
