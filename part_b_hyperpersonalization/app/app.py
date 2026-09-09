@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from databricks.sdk import WorkspaceClient
@@ -140,6 +140,19 @@ def health():
 
 
 # ── Debug (temporary) ──────────────────────────────────────────────────────────
+@app.get("/api/debug-headers")
+def debug_headers(request: Request):
+    """Show all incoming request headers — helps diagnose what auth the App gateway forwards."""
+    headers = {}
+    for k, v in request.headers.items():
+        # Redact most of auth token, keep prefix
+        if "auth" in k.lower() or "token" in k.lower():
+            headers[k] = v[:40] + "..." if len(v) > 40 else v
+        else:
+            headers[k] = v
+    return {"headers": headers, "env_databricks": {k: v[:20] for k, v in os.environ.items() if 'DATABRICKS' in k.upper()}}
+
+
 @app.get("/api/debug")
 def debug():
     """Debug endpoint to diagnose warehouse connectivity."""
@@ -536,24 +549,42 @@ WORKSPACE_ID  = "7474652083556195"
 GENIE_ROOM_ID = os.environ.get("GENIE_ROOM_ID", "01f1aba88ae1147aaab06144951695f9")
 
 @app.get("/api/embed-config")
-def get_embed_config():
-    """Returns dashboard/genie embed config with a short-lived token for the aibi client."""
-    try:
-        token_resp = w.tokens.create(comment="aibi-embed", lifetime_seconds=3600)
-        token = token_resp.token_value
-    except Exception as e:
-        # Fallback: return config without token (caller can handle gracefully)
-        token = None
+def get_embed_config(request: Request):
+    """Returns embed config with auth token for iframe embedding.
+    In Databricks Apps the user's OAuth token is forwarded in the Authorization
+    header — we extract it and pass it to the embed URLs so the iframe loads
+    with the user's existing Databricks session."""
+
+    # Databricks App gateway forwards the user's OAuth token in x-forwarded-access-token
+    # (not in Authorization — the gateway strips that and uses its own SP credentials)
+    token = (
+        request.headers.get("x-forwarded-access-token")
+        or request.headers.get("X-Forwarded-Access-Token")
+        or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+        or None
+    )
+    if token and token.startswith("Bearer "):
+        token = token[7:].strip()
+
+    base = WORKSPACE_URL.rstrip("/")
+    if not base.startswith("http"):
+        base = f"https://{base}"
+
+    # Build token-authenticated embed URLs — Databricks embed pages accept ?token=
+    def embed_url(path: str) -> str:
+        url = f"{base}/{path}?o={WORKSPACE_ID}"
+        if token:
+            url += f"&token={token}"
+        return url
 
     return {
-        "instance_url":    WORKSPACE_URL,
-        "workspace_id":    WORKSPACE_ID,
-        "dashboard_id":    DASHBOARD_ID,
-        "genie_room_id":   GENIE_ROOM_ID,
-        "token":           token,
-        # Direct embed URLs (usable if browser allows cross-origin iframes)
-        "dashboard_embed_url": f"{WORKSPACE_URL}/embed/dashboards/{DASHBOARD_ID}?o={WORKSPACE_ID}",
-        "genie_embed_url":     f"{WORKSPACE_URL}/embed/genie/rooms/{GENIE_ROOM_ID}?o={WORKSPACE_ID}",
+        "instance_url":       base,
+        "workspace_id":       WORKSPACE_ID,
+        "dashboard_id":       DASHBOARD_ID,
+        "genie_room_id":      GENIE_ROOM_ID,
+        "token":              token,
+        "dashboard_embed_url": embed_url(f"embed/dashboards/{DASHBOARD_ID}"),
+        "genie_embed_url":    embed_url(f"embed/genie/rooms/{GENIE_ROOM_ID}"),
     }
 
 
