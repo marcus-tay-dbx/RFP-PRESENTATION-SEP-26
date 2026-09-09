@@ -639,20 +639,51 @@ function PipelinePage({ C, streamingStats, tableStats }: {
   );
 }
 
-// ── DASHBOARD PAGE — iframe with token-authenticated URL ──────────────────────
+// ── DASHBOARD PAGE — @databricks/aibi-client (handles cross-origin auth) ──────
+const DASHBOARD_FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195';
+
 function DashboardPage({ C }: { C: any }) {
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6';
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dashRef      = useRef<any>(null);
+  const [status, setStatus]   = useState<'loading' | 'ready' | 'error'>('loading');
+  const [errMsg, setErrMsg]   = useState('');
 
   useEffect(() => {
+    let mounted = true;
     fetch('/api/embed-config')
       .then(r => r.json())
       .then(cfg => {
-        setEmbedUrl(cfg.dashboard_embed_url || FALLBACK);
-        setLoading(false);
+        if (!mounted) return;
+        if (!cfg.token) {
+          setErrMsg('No auth token available — open dashboard directly in Databricks.');
+          setStatus('error');
+          return;
+        }
+        if (!containerRef.current) return;
+        try {
+          const d = new DatabricksDashboard({
+            instanceUrl: cfg.instance_url,
+            workspaceId: cfg.workspace_id,
+            dashboardId: cfg.dashboard_id,
+            token:       cfg.token,
+            container:   containerRef.current,
+          });
+          dashRef.current = d;
+          d.initialize()
+            .then(() => { if (mounted) setStatus('ready'); })
+            .catch((e: any) => {
+              if (!mounted) return;
+              // Fallback to iframe if aibi-client fails
+              setErrMsg(String(e));
+              setStatus('error');
+            });
+        } catch (e: any) {
+          setErrMsg(String(e));
+          setStatus('error');
+        }
       })
-      .catch(() => { setEmbedUrl(FALLBACK); setLoading(false); });
+      .catch((e: any) => { if (mounted) { setErrMsg(String(e)); setStatus('error'); } });
+    return () => { mounted = false; dashRef.current?.destroy?.(); };
   }, []);
 
   return (
@@ -664,44 +695,59 @@ function DashboardPage({ C }: { C: any }) {
           <div style={{ fontWeight: 700, fontSize: '15px', color: C.text }}>Customer 360 AI/BI Dashboard</div>
           <div style={{ fontSize: '11px', color: C.muted }}>Databricks Lakeview · rfp_presentation</div>
         </div>
-        {loading && <span style={{ fontSize: '12px', color: C.muted }}>⏳ Loading…</span>}
-        <a href={FALLBACK} target="_blank" rel="noopener noreferrer"
+        {status === 'loading' && <span style={{ fontSize: '12px', color: C.muted }}>⏳ Loading…</span>}
+        <a href={DASHBOARD_FALLBACK} target="_blank" rel="noopener noreferrer"
            style={{ marginLeft: 'auto', fontSize: '12px', color: C.blue, fontWeight: 600,
                     textDecoration: 'none', padding: '5px 12px', borderRadius: '6px',
                     border: `1px solid ${C.border}`, background: C.bg }}>
           ↗ Open in Databricks
         </a>
       </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        {embedUrl && (
-          <iframe
-            key={embedUrl}
-            src={embedUrl}
-            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-            title="Customer 360 Dashboard"
-            allow="clipboard-write; fullscreen"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-          />
-        )}
-      </div>
+
+      {/* aibi-client mount point */}
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden',
+                                        display: status === 'error' ? 'none' : 'block' }} />
+
+      {/* Error fallback — iframe with token */}
+      {status === 'error' && (
+        <IframePage
+          C={C}
+          src={`https://fevm-fevm-master-classic-marcus.cloud.databricks.com/embed/dashboards/01f1aba81e0f1ff9bf93ebc03be8d5b6?o=7474652083556195`}
+          title="Customer 360 Dashboard (iframe fallback)"
+        />
+      )}
+    </div>
+  );
+}
+
+// ── SHARED IFRAME COMPONENT ───────────────────────────────────────────────────
+function IframePage({ C, src, title }: { C: any; src: string; title: string }) {
+  return (
+    <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <iframe
+        key={src}
+        src={src}
+        style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
+        title={title}
+        allow="clipboard-write; fullscreen"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+      />
     </div>
   );
 }
 
 // ── GENIE PAGE — iframe with token-authenticated URL ─────────────────────────
+const GENIE_FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/genie/rooms/01f1aba88ae1147aaab06144951695f9';
+
 function GeniePage({ C }: { C: any }) {
-  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const FALLBACK = 'https://fevm-fevm-master-classic-marcus.cloud.databricks.com/genie/rooms/01f1aba88ae1147aaab06144951695f9';
+  const [embedUrl, setEmbedUrl] = useState<string>('');
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     fetch('/api/embed-config')
       .then(r => r.json())
-      .then(cfg => {
-        setEmbedUrl(cfg.genie_embed_url || FALLBACK);
-        setLoading(false);
-      })
-      .catch(() => { setEmbedUrl(FALLBACK); setLoading(false); });
+      .then(cfg => { setEmbedUrl(cfg.genie_embed_url || GENIE_FALLBACK); setLoading(false); })
+      .catch(() => { setEmbedUrl(GENIE_FALLBACK); setLoading(false); });
   }, []);
 
   return (
@@ -711,28 +757,19 @@ function GeniePage({ C }: { C: any }) {
         <span style={{ fontSize: '18px' }}>🧞</span>
         <div>
           <div style={{ fontWeight: 700, fontSize: '15px', color: C.text }}>Genie — Ask Questions About Your Customers</div>
-          <div style={{ fontSize: '11px', color: C.muted }}>Databricks AI/BI Genie · Natural language analytics · rfp_presentation</div>
+          <div style={{ fontSize: '11px', color: C.muted }}>Databricks AI/BI Genie · Natural language analytics</div>
         </div>
         {loading && <span style={{ fontSize: '12px', color: C.muted }}>⏳ Loading…</span>}
-        <a href={FALLBACK} target="_blank" rel="noopener noreferrer"
+        <a href={GENIE_FALLBACK} target="_blank" rel="noopener noreferrer"
            style={{ marginLeft: 'auto', fontSize: '12px', color: C.blue, fontWeight: 600,
                     textDecoration: 'none', padding: '5px 12px', borderRadius: '6px',
                     border: `1px solid ${C.border}`, background: C.bg }}>
           ↗ Open in Databricks
         </a>
       </div>
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        {embedUrl && (
-          <iframe
-            key={embedUrl}
-            src={embedUrl}
-            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-            title="Genie — Customer Analytics"
-            allow="clipboard-write; fullscreen"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-          />
-        )}
-      </div>
+      {!loading && embedUrl && (
+        <IframePage C={C} src={embedUrl} title="Genie — Customer Analytics" />
+      )}
     </div>
   );
 }

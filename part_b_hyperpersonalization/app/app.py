@@ -583,7 +583,8 @@ def get_embed_config(request: Request):
         "dashboard_id":       DASHBOARD_ID,
         "genie_room_id":      GENIE_ROOM_ID,
         "token":              token,
-        "dashboard_embed_url": embed_url(f"embed/dashboards/{DASHBOARD_ID}"),
+        # /dashboards/ (not /embed/dashboards/) returns HTML 200
+        "dashboard_embed_url": embed_url(f"dashboards/{DASHBOARD_ID}"),
         "genie_embed_url":    embed_url(f"embed/genie/rooms/{GENIE_ROOM_ID}"),
     }
 
