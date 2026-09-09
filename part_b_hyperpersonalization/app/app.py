@@ -50,14 +50,19 @@ def _glm_service() -> str:
     return f"dbx-glm-gateway-{_username_slug()}"
 
 
+_FALLBACK_WAREHOUSE = os.environ.get("DATABRICKS_WAREHOUSE_ID", "637b124ddfbe2377")
+
 def _get_warehouse() -> str:
     global _warehouse_id
     if _warehouse_id:
         return _warehouse_id
-    warehouses = list(w.warehouses.list())
-    running = [wh for wh in warehouses if wh.state and "RUNNING" in str(wh.state)]
-    wh = (running[0] if running else warehouses[0]) if warehouses else None
-    _warehouse_id = wh.id if wh else None
+    try:
+        warehouses = list(w.warehouses.list())
+        running = [wh for wh in warehouses if wh.state and "RUNNING" in str(wh.state)]
+        wh = (running[0] if running else warehouses[0]) if warehouses else None
+        _warehouse_id = wh.id if wh else _FALLBACK_WAREHOUSE
+    except Exception:
+        _warehouse_id = _FALLBACK_WAREHOUSE
     return _warehouse_id
 
 
@@ -80,6 +85,25 @@ def _rows(sql: str, cols: Optional[list] = None) -> list:
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "DBX Bank Customer Intelligence API"}
+
+
+# ── Debug (temporary) ──────────────────────────────────────────────────────────
+@app.get("/api/debug")
+def debug():
+    """Debug endpoint to diagnose warehouse connectivity."""
+    result = {"warehouse_id": None, "error": None, "test_query": None}
+    try:
+        result["warehouse_id"] = _get_warehouse()
+        test = w.statement_execution.execute_statement(
+            warehouse_id=result["warehouse_id"],
+            statement="SELECT 1 as test",
+            wait_timeout="30s"
+        )
+        result["test_query"] = str(test.result.data_array) if test.result else "no_result"
+        result["tables"] = str(_rows(f"SHOW TABLES IN {FULL}"))[:500]
+    except Exception as e:
+        result["error"] = str(e)[:500]
+    return result
 
 
 # ── Customer overview — with optional recommendations join ─────────────────────
