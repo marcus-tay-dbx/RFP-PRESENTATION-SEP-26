@@ -496,6 +496,35 @@ In 2-3 concise sentences, explain to a bank relationship manager WHY "{product_n
     }
 
 
+# ── Streaming stats — row counts for bronze streaming tables ──────────────────
+@app.get("/api/streaming-stats")
+def streaming_stats():
+    """Row counts for streaming bronze tables — used by live viz."""
+    results = {}
+    for table in ["bronze_digital_events", "bronze_credit_bureau", "bronze_telco_events"]:
+        count_rows = _rows(f"SELECT COUNT(*) as n FROM {FULL}.{table}")
+        results[table] = int(count_rows[0]["n"]) if count_rows else 0
+    return results
+
+
+# ── Table stats — row counts for all key lineage tables ───────────────────────
+@app.get("/api/table-stats")
+def table_stats():
+    """Row counts for all key tables in the lineage."""
+    tables = [
+        "gold_customer_360", "gold_product_recommendations",
+        "silver_customers", "silver_transactions", "silver_deposit_accounts",
+        "customer_features",
+        "bronze_digital_events", "bronze_credit_bureau", "bronze_telco_events",
+        "bronze_customer_master", "bronze_core_banking_txn",
+    ]
+    results = {}
+    for t in tables:
+        rows = _rows(f"SELECT COUNT(*) as n FROM {FULL}.{t}")
+        results[t] = int(rows[0]["n"]) if rows else -1
+    return results
+
+
 # ── Serve React frontend ──────────────────────────────────────────────────────
 if os.path.exists("frontend/dist"):
     app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
